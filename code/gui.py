@@ -6,7 +6,6 @@ import cv2
 import numpy as np
 from image_processor import ImageProcessor 
 
-
 class ImageProcessorGUI(QWidget):  
     def __init__(self):
         super().__init__()
@@ -16,6 +15,7 @@ class ImageProcessorGUI(QWidget):
 
         self.image_path = None  
         self.image_processor = None  
+        self.processed_image = None  # Store the processed image for saving
 
         # Main layout
         self.main_layout = QVBoxLayout()
@@ -54,14 +54,11 @@ class ImageProcessorGUI(QWidget):
         self.slider_layout.addWidget(self.brightness_label)
         self.slider_layout.addWidget(self.brightness_slider)
 
-        # Load and reset buttons
+        # Reset button
         self.button_layout = QHBoxLayout()
-        self.load_button = QPushButton("Load Image")
-        self.load_button.clicked.connect(self.load_image)
         self.reset_button = QPushButton("Reset")
         self.reset_button.clicked.connect(self.reset_image)
 
-        self.button_layout.addWidget(self.load_button)
         self.button_layout.addWidget(self.reset_button)
 
         # Layouts
@@ -73,16 +70,29 @@ class ImageProcessorGUI(QWidget):
 
     def create_menu(self):
         menu_bar = QMenuBar(self)
+        load_menu = menu_bar.addMenu("Load")
+        load_action = QAction("Load Image", self)
+        load_action.triggered.connect(self.load_image)
+        load_menu.addAction(load_action)
 
-        file_menu = menu_bar.addMenu("File")
+        save_menu = menu_bar.addMenu("Save")
 
-        open_action = QAction("Open Image", self)
-        open_action.triggered.connect(self.load_image)
-        file_menu.addAction(open_action)
+        save_jpg_action = QAction("Save as JPG", self)
+        save_jpg_action.triggered.connect(lambda: self.save_image("jpg"))
+        save_menu.addAction(save_jpg_action)
+
+        save_png_action = QAction("Save as PNG", self)
+        save_png_action.triggered.connect(lambda: self.save_image("png"))
+        save_menu.addAction(save_png_action)
+
+        save_bmp_action = QAction("Save as BMP", self)
+        save_bmp_action.triggered.connect(lambda: self.save_image("bmp"))
+        save_menu.addAction(save_bmp_action)
 
         exit_action = QAction("Exit", self)
         exit_action.triggered.connect(QApplication.instance().quit)
-        file_menu.addAction(exit_action)
+        save_menu.addAction(exit_action)
+
 
         self.main_layout.setMenuBar(menu_bar)
 
@@ -100,7 +110,7 @@ class ImageProcessorGUI(QWidget):
             self.brightness_slider.setValue(0) 
 
     def display_image(self, image, label):
-        """Konwersja obrazu z numpy do QPixmap i wyświetlenie w QLabel."""
+        """Convert numpy image to QPixmap and display it in QLabel."""
         if image is None:
             return
         height, width, channel = image.shape
@@ -111,18 +121,30 @@ class ImageProcessorGUI(QWidget):
         label.setPixmap(scaled_pixmap)
 
     def apply_brightness(self):
-        """Zmiana jasności obrazu na podstawie wartości suwaka."""
+        """Change brightness of the image based on slider value."""
         if self.image_processor:
             brightness_value = self.brightness_slider.value()
-            processed_img = self.image_processor.adjust_brightness(brightness_value)
-            self.display_image(processed_img, self.processed_label)
+            self.processed_image = self.image_processor.adjust_brightness(brightness_value)
+            self.display_image(self.processed_image, self.processed_label)
 
     def reset_image(self):
-        """Reset obrazu do oryginalnej wersji."""
+        """Reset the image to the original version."""
         if self.image_processor:
             self.display_image(self.image_processor.image, self.processed_label)
             self.brightness_slider.setValue(0)
 
+    def save_image(self, format):
+        """Save the processed image in the selected format."""
+        if self.processed_image is None:
+            QMessageBox.warning(self, "No Image", "Please process an image before saving.")
+            return
+        
+        file_path, _ = QFileDialog.getSaveFileName(self, f"Save Image as {format.upper()}", "", f"Images (*.{format})")
+        if file_path:
+            if not file_path.endswith(f".{format}"):
+                file_path += f".{format}"  # Ensure the file has the correct extension
+            
+            cv2.imwrite(file_path, cv2.cvtColor(self.processed_image, cv2.COLOR_RGB2BGR))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
