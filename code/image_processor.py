@@ -101,3 +101,23 @@ class ImageProcessor:
                     region = padded[i:i+kernel_size, j:j+kernel_size]
                     output[i, j, c] = np.sum(region * kernel)
         return np.clip(output, 0, 255).astype(np.uint8)
+    
+    def edge_detection(self):
+        """
+        Edge detection
+        """
+        kernel = np.array([[1, 0, -1],
+                           [0, 0, 0],
+                           [-1, 0, 1]])
+        kernel_size = kernel.shape[0]
+        pad = kernel_size // 2
+        image_float = self.image.astype(np.float32)
+        output = np.zeros_like(image_float)
+        for c in range(self.image.shape[2]):
+            padded = np.pad(image_float[..., c], pad, mode='edge')
+            for i in range(self.image.shape[0]):
+                for j in range(self.image.shape[1]):
+                    region = padded[i:i+kernel_size, j:j+kernel_size]
+                    output[i, j, c] = np.sum(region * kernel)
+        return np.clip(output, 0, 255).astype(np.uint8)
+
