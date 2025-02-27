@@ -10,18 +10,19 @@ class ImageProcessorGUI(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Bildverarbeitung - Brightness Filter")
+        self.setWindowTitle("Bildverarbeitung - Image Processing")
         self.setGeometry(100, 100, 700, 500)
 
         self.image_path = None  
         self.image_processor = None  
         self.processed_image = None  
 
-        # Main layout
-        self.main_layout = QVBoxLayout()
-
+        self.big_layout = QHBoxLayout()
         # Menu bar
         self.create_menu()
+
+        # Main layout
+        self.main_layout = QVBoxLayout()
 
         # Image layout
         self.image_layout = QHBoxLayout()
@@ -114,6 +115,29 @@ class ImageProcessorGUI(QWidget):
         self.edge_detection_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
         self.button_layout_slow.addWidget(self.edge_detection_button)
 
+        # Custom Filter Layout
+        self.custom_filter_layout = QVBoxLayout()
+
+        # Kernel Size Selection
+        self.kernel_size_label = QLabel("Select Kernel Size:")
+        self.kernel_size_combo = QComboBox()
+        self.kernel_size_combo.addItems(["3", "5", "7"])
+        self.kernel_size_combo.currentIndexChanged.connect(self.update_kernel_input_grid)
+        self.custom_filter_layout.addWidget(self.kernel_size_label)
+        self.custom_filter_layout.addWidget(self.kernel_size_combo)
+
+        # Kernel Input Grid
+        self.kernel_input_grid = QGridLayout()
+        self.custom_filter_layout.addLayout(self.kernel_input_grid)
+
+        # Apply Custom Filter Button
+        self.apply_custom_filter_button = QPushButton("Apply Custom Filter")
+        self.apply_custom_filter_button.clicked.connect(self.apply_custom_filter)
+        self.custom_filter_layout.addWidget(self.apply_custom_filter_button)
+
+        self.custom_filter_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # Initialize kernel input fields
+        self.update_kernel_input_grid()
 
         # Buttons layout
         self.button_layout2 = QVBoxLayout()
@@ -133,9 +157,13 @@ class ImageProcessorGUI(QWidget):
         self.main_layout.addLayout(self.slider_layout)
         self.main_layout.addLayout(self.button_layout)
         self.main_layout.addLayout(self.button_layout_slow)
+        
         self.main_layout.addLayout(self.button_layout2)
 
-        self.setLayout(self.main_layout)
+        self.big_layout.addLayout(self.main_layout)
+        self.big_layout.addLayout(self.custom_filter_layout)
+
+        self.setLayout(self.big_layout)
 
     def create_menu(self):
         menu_bar = QMenuBar(self)
@@ -179,7 +207,7 @@ class ImageProcessorGUI(QWidget):
         self.redo_action.setEnabled(False)  # Initially disabled
         edit_menu.addAction(self.redo_action)
 
-        self.main_layout.setMenuBar(menu_bar)
+        self.big_layout.setMenuBar(menu_bar)
 
 
     def load_image(self):
@@ -268,6 +296,53 @@ class ImageProcessorGUI(QWidget):
         if self.image_processor:
             self.processed_image = self.image_processor.edge_detection()
             self.display_image(self.processed_image, self.processed_label)
+
+    def update_kernel_input_grid(self):
+        """Update the grid layout based on the selected kernel size."""
+        # Clear existing input fields
+        for i in range(self.kernel_input_grid.count()):
+            widget = self.kernel_input_grid.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        kernel_size = int(self.kernel_size_combo.currentText())
+        for i in range(kernel_size):
+            for j in range(kernel_size):
+                # Create QLineEdit for each kernel cell
+                weight_input = QLineEdit(self)
+                weight_input.setPlaceholderText("0")  # Default placeholder
+                #input zeros into weights where values are missing
+                weight_input.setText("0")
+                self.kernel_input_grid.addWidget(weight_input, i, j)
+
+    def apply_custom_filter(self):
+        if self.image_processor is None:
+            return
+        """Apply the custom filter based on user input."""
+        kernel_size = int(self.kernel_size_combo.currentText())
+        weights = []
+
+        # Retrieve weights from the grid
+        for i in range(kernel_size):
+            for j in range(kernel_size):
+                weight_input = self.kernel_input_grid.itemAt(i * kernel_size + j).widget()
+                try:
+                    weight = float(weight_input.text())
+                    weights.append(weight)
+                except ValueError:
+                    QMessageBox.warning(self, "Input Error", f"Invalid weight at position ({i}, {j}). Please enter a valid number.")
+                    return
+
+        if len(weights) != kernel_size ** 2:
+            QMessageBox.warning(self, "Input Error", "Number of weights must match the kernel size.")
+            return
+
+        # Convert the list of weights into a numpy array
+        weights_array = np.array(weights).reshape((kernel_size, kernel_size))
+
+        # Apply custom filter
+        self.processed_image = self.image_processor.apply_custom_filter(weights_array)
+        self.display_image(self.processed_image, self.processed_label)
     
     def apply_changes(self):
         """Apply the current modifications to the image, allowing further edits."""
