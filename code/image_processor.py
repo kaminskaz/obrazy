@@ -8,10 +8,15 @@ class ImageProcessor:
 
     def convert_to_gray(self):
         """
-        Conversion to greyscale
+        Convert the image to grayscale.
         """
         gray = np.dot(self.image[..., :3], [0.114, 0.587, 0.299])
-        return gray.astype(np.uint8)
+        gray = gray.astype(np.uint8)
+
+        # Convert (H, W) → (H, W, 3) for GUI compatibility
+        gray = np.stack([gray] * 3, axis=-1)  # Duplicate grayscale values across RGB channels
+
+        return gray
 
     def adjust_brightness(self, value):
         """
@@ -24,7 +29,7 @@ class ImageProcessor:
         """
         Contrast adjustment
         """
-        contrasted = np.clip((self.image.astype(np.int16) - 128) * factor + 128, 0, 255)
+        contrasted = np.clip((self.image.astype(np.int16) - 128) * float(factor) + 128, 0, 255)
         return contrasted.astype(np.uint8)
 
     def negative(self):
