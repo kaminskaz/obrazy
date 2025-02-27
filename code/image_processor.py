@@ -125,4 +125,19 @@ class ImageProcessor:
                     region = padded[i:i+kernel_size, j:j+kernel_size]
                     output[i, j, c] = np.sum(region * kernel)
         return np.clip(output, 0, 255).astype(np.uint8)
+    
+    def apply_custom_filter(self, kernel):
+        """Apply a custom filter to the image using the provided kernel."""
+        pad = kernel.shape[0] // 2
+        image_float = self.image.astype(np.float32)
+        output = np.zeros_like(image_float)
+
+        for c in range(image_float.shape[2]):
+            padded = np.pad(image_float[..., c], pad, mode='edge')
+            for i in range(image_float.shape[0]):
+                for j in range(image_float.shape[1]):
+                    region = padded[i:i + kernel.shape[0], j:j + kernel.shape[1]]
+                    output[i, j, c] = np.sum(region * kernel)
+
+        return np.clip(output, 0, 255).astype(np.uint8)
 
