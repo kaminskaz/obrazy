@@ -10,12 +10,12 @@ class ImageProcessorGUI(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Bildverarbeitung - Image Processing")
+        self.setWindowTitle("Bildverarbeitung - Brightness Filter")
         self.setGeometry(100, 100, 700, 500)
 
         self.image_path = None  
         self.image_processor = None  
-        self.processed_image = None  # Store the processed image for saving
+        self.processed_image = None  
 
         # Main layout
         self.main_layout = QVBoxLayout()
@@ -42,12 +42,10 @@ class ImageProcessorGUI(QWidget):
         self.image_layout.addWidget(self.original_label)
         self.image_layout.addWidget(self.processed_label)
 
-        # Store previous and next image for undo/redo
-        self.previous_image = None
-        self.next_image = None
-
-        # Brightness slider
+        # Sliders layout
         self.slider_layout = QVBoxLayout()
+        
+        # Brightness slider
         self.brightness_label = QLabel("Brightness:")
         self.brightness_slider = QSlider(Qt.Orientation.Horizontal)
         self.brightness_slider.setMinimum(-100)
@@ -55,58 +53,87 @@ class ImageProcessorGUI(QWidget):
         self.brightness_slider.setValue(0)
         self.brightness_slider.valueChanged.connect(self.apply_brightness)
 
-        self.slider_layout.addWidget(self.brightness_label)
-        self.slider_layout.addWidget(self.brightness_slider)
-
-        #Contrast slider
+        # Contrast slider
         self.contrast_label = QLabel("Contrast:")
         self.contrast_slider = QSlider(Qt.Orientation.Horizontal)
         self.contrast_slider.setMinimum(10)
         self.contrast_slider.setMaximum(300)
         self.contrast_slider.setValue(100)
-        self.contrast_slider.setTickInterval(1)
         self.contrast_slider.valueChanged.connect(self.apply_contrast)
 
+        # Binarization slider
+        self.binarization_label = QLabel("Binarization Threshold:")
+        self.binarization_slider = QSlider(Qt.Orientation.Horizontal)
+        self.binarization_slider.setMinimum(0)
+        self.binarization_slider.setMaximum(255)
+        self.binarization_slider.setValue(128)  # Default value
+        self.binarization_slider.valueChanged.connect(self.binarization)
+
+        # Add sliders to the layout
+        self.slider_layout.addWidget(self.brightness_label)
+        self.slider_layout.addWidget(self.brightness_slider)
         self.slider_layout.addWidget(self.contrast_label)
         self.slider_layout.addWidget(self.contrast_slider)
+        self.slider_layout.addWidget(self.binarization_label)
+        self.slider_layout.addWidget(self.binarization_slider)
 
-        # Buttons
+        # Buttons layout
         self.button_layout = QVBoxLayout()
 
-        # Convert to gray button
+        # Fast filter buttons
         self.gray_button = QPushButton("Convert to Gray")
         self.gray_button.clicked.connect(self.convert_to_gray)
-        self.gray_button.setStyleSheet("background-color: #FF1493;") 
+        self.gray_button.setStyleSheet("background-color: lightpink; color: black;")  # Light pink with black text
         self.button_layout.addWidget(self.gray_button)
 
-        # Negative button
         self.negative_button = QPushButton("Negative")
         self.negative_button.clicked.connect(self.negative)
-        self.negative_button.setStyleSheet("background-color: #FF1493;")  
+        self.negative_button.setStyleSheet("background-color: lightpink; color: black;")  # Light pink with black text
         self.button_layout.addWidget(self.negative_button)
 
-        # Binarization button
-        self.binarization_button = QPushButton("Binarization")
-        self.binarization_button.clicked.connect(self.binarization)
-        self.binarization_button.setStyleSheet("background-color: #FF1493;")  
-        self.button_layout.addWidget(self.binarization_button)
+        self.button_layout_slow = QHBoxLayout()
+
+        # Slow filter buttons
+        self.average_filter_button = QPushButton("Average Filter")
+        self.average_filter_button.clicked.connect(self.apply_average_filter)
+        self.average_filter_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_slow.addWidget(self.average_filter_button)
+
+        self.gaussian_filter_button = QPushButton("Gaussian Filter")
+        self.gaussian_filter_button.clicked.connect(self.apply_gaussian_filter)
+        self.gaussian_filter_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_slow.addWidget(self.gaussian_filter_button)
+
+        self.sharpen_button = QPushButton("Sharpen")
+        self.sharpen_button.clicked.connect(self.apply_sharpen)
+        self.sharpen_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_slow.addWidget(self.sharpen_button)
+
+        self.edge_detection_button = QPushButton("Edge Detection")
+        self.edge_detection_button.clicked.connect(self.apply_edge_detection)
+        self.edge_detection_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_slow.addWidget(self.edge_detection_button)
 
 
-        # Apply button
-        self.apply_button = QPushButton("Apply")
+        # Buttons layout
+        self.button_layout2 = QVBoxLayout()
+
+        # Apply changes button
+        self.apply_button = QPushButton("Apply Changes")
         self.apply_button.clicked.connect(self.apply_changes)
-        self.button_layout.addWidget(self.apply_button)
-
+        self.button_layout2.addWidget(self.apply_button)
+    
         # Reset button
         self.reset_button = QPushButton("Reset")
         self.reset_button.clicked.connect(self.reset_image)
-
-        self.button_layout.addWidget(self.reset_button)
+        self.button_layout2.addWidget(self.reset_button)
 
         # Layouts
         self.main_layout.addLayout(self.image_layout)
         self.main_layout.addLayout(self.slider_layout)
         self.main_layout.addLayout(self.button_layout)
+        self.main_layout.addLayout(self.button_layout_slow)
+        self.main_layout.addLayout(self.button_layout2)
 
         self.setLayout(self.main_layout)
 
@@ -212,11 +239,35 @@ class ImageProcessorGUI(QWidget):
             self.processed_image = negative_image
 
     def binarization(self):
-        """Convert the image to binary."""
+        """Apply binarization based on slider value."""
         if self.image_processor:
-            binary_image = self.image_processor.binarization()
-            self.display_image(binary_image, self.processed_label)
-            self.processed_image = binary_image
+            threshold_value = self.binarization_slider.value()
+            self.processed_image = self.image_processor.binarization(threshold_value)
+            self.display_image(self.processed_image, self.processed_label)
+
+    def apply_average_filter(self):
+        """Apply average filter to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.average_filter()
+            self.display_image(self.processed_image, self.processed_label)
+
+    def apply_gaussian_filter(self):
+        """Apply Gaussian filter to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.gaussian_filter()
+            self.display_image(self.processed_image, self.processed_label)
+
+    def apply_sharpen(self):
+        """Apply sharpening filter to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.sharpen()
+            self.display_image(self.processed_image, self.processed_label)
+
+    def apply_edge_detection(self):
+        """Apply edge detection to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.edge_detection()
+            self.display_image(self.processed_image, self.processed_label)
     
     def apply_changes(self):
         """Apply the current modifications to the image, allowing further edits."""
