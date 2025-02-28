@@ -139,4 +139,86 @@ class ImageProcessor:
                     output[i, j, c] = np.sum(region * kernel)
 
         return np.clip(output, 0, 255).astype(np.uint8)
+    
+    import numpy as np
+
+    def rotate(self, angle):
+        """
+        Rotate the image by the given angle without using additional libraries (except NumPy).
+        """
+        # Convert angle to radians
+        theta = np.radians(angle)
+        
+        # Get image dimensions
+        h, w, c = self.image.shape  
+
+        # Compute the center of the image
+        center_x, center_y = w // 2, h // 2
+
+        # Rotation matrix for counterclockwise rotation
+        rotation_matrix = np.array([
+            [np.cos(theta), -np.sin(theta)],
+            [np.sin(theta),  np.cos(theta)]
+        ])
+
+        # Determine the new image size by checking corner transformations
+        corners = np.array([
+            [-center_x, -center_y],
+            [w - center_x, -center_y],
+            [-center_x, h - center_y],
+            [w - center_x, h - center_y]
+        ])
+
+        # Rotate corners to find the new bounding box
+        new_corners = np.dot(corners, rotation_matrix.T)
+        min_x, min_y = new_corners.min(axis=0)
+        max_x, max_y = new_corners.max(axis=0)
+
+        # Compute new width and height
+        new_w = int(np.ceil(max_x - min_x))
+        new_h = int(np.ceil(max_y - min_y))
+
+        # Create an empty output image
+        rotated_image = np.zeros((new_h, new_w, c), dtype=self.image.dtype)
+
+        # Compute new center
+        new_center_x, new_center_y = new_w // 2, new_h // 2
+
+        # Iterate over each pixel in the new image
+        for i in range(new_h):
+            for j in range(new_w):
+                # Map back to original image coordinates
+                x, y = np.dot(rotation_matrix.T, np.array([j - new_center_x, i - new_center_y]))
+                x, y = int(round(x + center_x)), int(round(y + center_y))
+
+                # Check if coordinates are within the original image bounds
+                if 0 <= x < w and 0 <= y < h:
+                    rotated_image[i, j] = self.image[y, x]
+
+        return rotated_image
+    
+    def flip(self, direction):
+        """
+        Flip the image in the specified direction.
+        direction: 'horizontal' or 'vertical'
+        """
+        # Get the image dimensions
+        height, width, channels = self.image.shape
+        
+        if direction == 'horizontal':
+            # Flip the image horizontally by reversing the columns
+            flipped_image = self.image.copy()
+            for row in range(height):
+                flipped_image[row] = self.image[row, ::-1]  # Reverse each row
+
+        elif direction == 'vertical':
+            # Flip the image vertically by reversing the rows
+            flipped_image = self.image.copy()
+            flipped_image = flipped_image[::-1, :, :]  # Reverse rows
+        else:
+            raise ValueError("Direction must be 'horizontal' or 'vertical'")
+
+        return flipped_image
+
+
 
