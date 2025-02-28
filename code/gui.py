@@ -5,6 +5,7 @@ import sys
 import cv2
 import numpy as np
 from image_processor import ImageProcessor 
+from welcome import WelcomeDialog
 
 class ImageProcessorGUI(QWidget):  
     def __init__(self):
@@ -414,6 +415,9 @@ class ImageProcessorGUI(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = ImageProcessorGUI()
-    window.show()
-    sys.exit(app.exec())
+
+    welcome_dialog = WelcomeDialog()
+    if welcome_dialog.exec():  # If user clicks "Get Started", open main GUI
+        window = ImageProcessorGUI()
+        window.show()
+        sys.exit(app.exec())
