@@ -118,6 +118,9 @@ class ImageProcessorGUI(QWidget):
 
         # Custom Filter Layout
         self.custom_filter_layout = QVBoxLayout()
+        self.custom_label = QLabel("Custom kernel filter")
+        self.custom_label.setStyleSheet("font-weight: bold;")
+        self.custom_filter_layout.addWidget(self.custom_label)
 
         # Kernel Size Selection
         self.kernel_size_label = QLabel("Select Kernel Size:")
@@ -139,6 +142,46 @@ class ImageProcessorGUI(QWidget):
         self.custom_filter_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         # Initialize kernel input fields
         self.update_kernel_input_grid()
+
+        self.augumentation_label = QLabel("Augmentation")
+        self.augumentation_label.setStyleSheet("font-weight: bold;")
+        self.custom_filter_layout.addWidget(self.augumentation_label)
+
+        # Rotation section
+        self.rotation_layout = QHBoxLayout()
+
+        # Angle input box (SpinBox)
+        self.angle_input = QSpinBox()
+        self.angle_input.setRange(-180, 180)  # Allow rotation in both directions
+        self.angle_input.setValue(0)  # Default to 0 degrees
+        self.rotation_layout.addWidget(QLabel("Rotation Angle:"))
+        self.rotation_layout.addWidget(self.angle_input)
+
+        # Apply Rotation Button
+        self.rotate_button = QPushButton("Rotate")
+        self.rotate_button.clicked.connect(self.apply_rotation)
+        self.rotate_button.setStyleSheet("background-color: #d5006d; color: white;") 
+        self.rotation_layout.addWidget(self.rotate_button)
+        #add under custom filter
+        self.custom_filter_layout.addLayout(self.rotation_layout)
+
+        # Create flip buttons
+        self.flip_button_layout = QVBoxLayout()
+
+        # Horizontal flip button
+        self.horizontal_flip_button = QPushButton("Flip Horizontal")
+        self.horizontal_flip_button.clicked.connect(self.apply_flip_horizontal)
+        self.horizontal_flip_button.setStyleSheet("background-color: #d5006d; color: white;")  # Light pink with black text
+        self.flip_button_layout.addWidget(self.horizontal_flip_button)
+
+        # Vertical flip button
+        self.vertical_flip_button = QPushButton("Flip Vertical")
+        self.vertical_flip_button.clicked.connect(self.apply_flip_vertical)
+        self.vertical_flip_button.setStyleSheet("background-color: #d5006d; color: white;")  # Light pink with black text
+        self.flip_button_layout.addWidget(self.vertical_flip_button)
+
+        # Add the flip buttons layout to the main layout
+        self.custom_filter_layout.addLayout(self.flip_button_layout)
 
         # Buttons layout
         self.button_layout2 = QVBoxLayout()
@@ -229,15 +272,37 @@ class ImageProcessorGUI(QWidget):
 
 
     def display_image(self, image, label):
-        """Convert numpy image to QPixmap and display it in QLabel."""
+        """
+        Display the image on the label in the GUI.
+        """
         if image is None:
             return
-        height, width, channel = image.shape
-        bytes_per_line = channel * width
-        q_img = QImage(image.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+
+        # Get image dimensions
+        height, width = image.shape[:2]
+
+        # Ensure the image is in RGB format (3 channels)
+        if len(image.shape) == 2:  # Grayscale image (2D)
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)  # Convert grayscale to RGB
+            height, width = image.shape[:2]
+        
+        # Convert the image to a byte array for QImage
+        bytes_per_line = width * 3  # Assuming 3 channels (RGB)
+        image_data = image.tobytes()
+
+        # Create QImage from image data
+        q_img = QImage(image_data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+
+        # Create QPixmap from QImage
         pixmap = QPixmap.fromImage(q_img)
-        scaled_pixmap = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio)
-        label.setPixmap(scaled_pixmap)
+
+        # Scale the pixmap to fit inside the label while maintaining the aspect ratio
+        pixmap = pixmap.scaled(label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+
+        # Set the QPixmap to the label
+        label.setPixmap(pixmap)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
 
     def apply_brightness(self):
         """Change brightness of the image based on slider value."""
@@ -344,6 +409,39 @@ class ImageProcessorGUI(QWidget):
         # Apply custom filter
         self.processed_image = self.image_processor.apply_custom_filter(weights_array)
         self.display_image(self.processed_image, self.processed_label)
+
+    def apply_rotation(self):
+        """
+        Apply rotation to the image based on user-selected angle.
+        """
+        angle = self.angle_input.value()  # Get angle from input
+        if self.image_processor is None:
+            return
+        rotated_image = self.image_processor.rotate(angle)  # Rotate using custom function
+        self.processed_image = rotated_image  # Store rotated image as processed image
+
+        # Display the rotated image in the processed label
+        self.display_image(self.processed_image, self.processed_label)
+
+    def apply_flip_horizontal(self):
+        """Flip the image horizontally and display it."""
+        if self.image_processor:
+            flipped_image = self.image_processor.flip('horizontal')  # Flip horizontally
+            self.processed_image = flipped_image  # Store the flipped image as the processed image
+
+            # Display the flipped image in the processed label
+            self.display_image(self.processed_image, self.processed_label)
+
+    def apply_flip_vertical(self):
+        """Flip the image vertically and display it."""
+        if self.image_processor:
+            flipped_image = self.image_processor.flip('vertical')  # Flip vertically
+            self.processed_image = flipped_image  # Store the flipped image as the processed image
+
+            # Display the flipped image in the processed label
+            self.display_image(self.processed_image, self.processed_label)
+
+
     
     def apply_changes(self):
         """Apply the current modifications to the image, allowing further edits."""
