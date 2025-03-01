@@ -5,14 +5,32 @@ import sys
 import cv2
 import numpy as np
 from image_processor import ImageProcessor 
-from welcome import WelcomeDialog
+from gui_welcome import WelcomeDialog
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+class MplCanvas(FigureCanvas):
+    def __init__(self, parent=None, width=6, height=6, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        super().__init__(fig) 
+        self.axes = fig.add_subplot(111)
+        self.axes.set_title("")
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+        # self.axes.set_frame_on(False) 
+        self.axes.spines['top'].set_visible(False)  
+        self.axes.spines['right'].set_visible(False)  
+        self.axes.spines['left'].set_visible(False) 
+        self.axes.spines['bottom'].set_visible(False)
+        fig.tight_layout() 
+        self.draw()
 
 class ImageProcessorGUI(QWidget):  
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Bildverarbeitung - Image Processing")
-        self.setGeometry(100, 100, 700, 500)
+        self.setGeometry(100, 100, 1200, 900)
 
         self.image_path = None  
         self.image_processor = None  
@@ -31,13 +49,13 @@ class ImageProcessorGUI(QWidget):
         # Original image
         self.original_label = QLabel("Original Image")
         self.original_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.original_label.setFixedSize(300, 300)
+        self.original_label.setFixedSize(400, 400)
         self.original_label.setStyleSheet("border: 2px solid black;")
 
         # Processed image
         self.processed_label = QLabel("Modified Image")
         self.processed_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.processed_label.setFixedSize(300, 300)
+        self.processed_label.setFixedSize(400, 400)
         self.processed_label.setStyleSheet("border: 2px solid black;")
 
         # Add labels to layout
@@ -54,6 +72,8 @@ class ImageProcessorGUI(QWidget):
         self.brightness_slider.setMaximum(100)
         self.brightness_slider.setValue(0)
         self.brightness_slider.valueChanged.connect(self.apply_brightness)
+        self.brightness_slider.valueChanged.connect(self.update_histogram)
+        self.brightness_slider.valueChanged.connect(self.update_projection)
 
         # Contrast slider
         self.contrast_label = QLabel("Contrast:")
@@ -62,6 +82,8 @@ class ImageProcessorGUI(QWidget):
         self.contrast_slider.setMaximum(300)
         self.contrast_slider.setValue(100)
         self.contrast_slider.valueChanged.connect(self.apply_contrast)
+        self.contrast_slider.valueChanged.connect(self.update_histogram)
+        self.contrast_slider.valueChanged.connect(self.update_projection)
 
         # Binarization slider
         self.binarization_label = QLabel("Binarization Threshold:")
@@ -70,6 +92,8 @@ class ImageProcessorGUI(QWidget):
         self.binarization_slider.setMaximum(255)
         self.binarization_slider.setValue(128)  # Default value
         self.binarization_slider.valueChanged.connect(self.binarization)
+        self.binarization_slider.valueChanged.connect(self.update_histogram)
+        self.binarization_slider.valueChanged.connect(self.update_projection)
 
         # Add sliders to the layout
         self.slider_layout.addWidget(self.brightness_label)
@@ -78,6 +102,7 @@ class ImageProcessorGUI(QWidget):
         self.slider_layout.addWidget(self.contrast_slider)
         self.slider_layout.addWidget(self.binarization_label)
         self.slider_layout.addWidget(self.binarization_slider)
+        self.slider_layout.setSpacing(4)
 
         # Buttons layout
         self.button_layout = QVBoxLayout()
@@ -85,36 +110,72 @@ class ImageProcessorGUI(QWidget):
         # Fast filter buttons
         self.gray_button = QPushButton("Convert to Gray")
         self.gray_button.clicked.connect(self.convert_to_gray)
+        self.gray_button.clicked.connect(self.update_histogram)
+        self.gray_button.clicked.connect(self.update_projection)
         self.gray_button.setStyleSheet("background-color: lightpink; color: black;")  # Light pink with black text
         self.button_layout.addWidget(self.gray_button)
 
         self.negative_button = QPushButton("Negative")
         self.negative_button.clicked.connect(self.negative)
+        self.negative_button.clicked.connect(self.update_histogram)
+        self.negative_button.clicked.connect(self.update_projection)
         self.negative_button.setStyleSheet("background-color: lightpink; color: black;")  # Light pink with black text
         self.button_layout.addWidget(self.negative_button)
 
+        # Slow filter buttons
         self.button_layout_slow = QHBoxLayout()
 
-        # Slow filter buttons
         self.average_filter_button = QPushButton("Average Filter")
         self.average_filter_button.clicked.connect(self.apply_average_filter)
+        self.average_filter_button.clicked.connect(self.update_histogram)
+        self.average_filter_button.clicked.connect(self.update_projection)
         self.average_filter_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
         self.button_layout_slow.addWidget(self.average_filter_button)
 
         self.gaussian_filter_button = QPushButton("Gaussian Filter")
         self.gaussian_filter_button.clicked.connect(self.apply_gaussian_filter)
+        self.gaussian_filter_button.clicked.connect(self.update_histogram)
+        self.gaussian_filter_button.clicked.connect(self.update_projection)
         self.gaussian_filter_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
         self.button_layout_slow.addWidget(self.gaussian_filter_button)
 
         self.sharpen_button = QPushButton("Sharpen")
         self.sharpen_button.clicked.connect(self.apply_sharpen)
+        self.sharpen_button.clicked.connect(self.update_histogram)
+        self.sharpen_button.clicked.connect(self.update_projection)
         self.sharpen_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
         self.button_layout_slow.addWidget(self.sharpen_button)
 
-        self.edge_detection_button = QPushButton("Edge Detection")
-        self.edge_detection_button.clicked.connect(self.apply_edge_detection)
-        self.edge_detection_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
-        self.button_layout_slow.addWidget(self.edge_detection_button)
+        # Edge Detection buttons
+        self.button_layout_edge = QHBoxLayout()
+
+        self.edge_detection_button_sobel = QPushButton("Sobel")
+        self.edge_detection_button_sobel.clicked.connect(lambda: self.apply_edge_detection(method='sobel'))
+        self.edge_detection_button_sobel.clicked.connect(self.update_histogram)
+        self.edge_detection_button_sobel.clicked.connect(self.update_projection)
+        self.edge_detection_button_sobel.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_edge.addWidget(self.edge_detection_button_sobel)
+
+        self.edge_detection_prewitt_button = QPushButton("Prewitt")
+        self.edge_detection_prewitt_button.clicked.connect(lambda: self.apply_edge_detection(method='prewitt'))
+        self.edge_detection_prewitt_button.clicked.connect(self.update_histogram)
+        self.edge_detection_prewitt_button.clicked.connect(self.update_projection)
+        self.edge_detection_prewitt_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_edge.addWidget(self.edge_detection_prewitt_button)
+
+        self.edge_detection_button_laplacian = QPushButton("Laplacian")
+        self.edge_detection_button_laplacian.clicked.connect(lambda: self.apply_edge_detection(method='laplacian'))
+        self.edge_detection_button_laplacian.clicked.connect(self.update_histogram)
+        self.edge_detection_button_laplacian.clicked.connect(self.update_projection)
+        self.edge_detection_button_laplacian.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_edge.addWidget(self.edge_detection_button_laplacian)
+        
+        self.edge_detection_button_roberts = QPushButton("Roberts")
+        self.edge_detection_button_roberts.clicked.connect(lambda: self.apply_edge_detection(method='roberts_cross'))
+        self.edge_detection_button_roberts.clicked.connect(self.update_histogram)
+        self.edge_detection_button_roberts.clicked.connect(self.update_projection)
+        self.edge_detection_button_roberts.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.button_layout_edge.addWidget(self.edge_detection_button_roberts)
 
         # Custom Filter Layout
         self.custom_filter_layout = QVBoxLayout()
@@ -137,6 +198,8 @@ class ImageProcessorGUI(QWidget):
         # Apply Custom Filter Button
         self.apply_custom_filter_button = QPushButton("Apply Custom Filter")
         self.apply_custom_filter_button.clicked.connect(self.apply_custom_filter)
+        self.apply_custom_filter_button.clicked.connect(self.update_histogram)
+        self.apply_custom_filter_button.clicked.connect(self.update_projection)
         self.custom_filter_layout.addWidget(self.apply_custom_filter_button)
 
         self.custom_filter_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -160,28 +223,58 @@ class ImageProcessorGUI(QWidget):
         # Apply Rotation Button
         self.rotate_button = QPushButton("Rotate")
         self.rotate_button.clicked.connect(self.apply_rotation)
+        self.rotate_button.clicked.connect(self.update_histogram)
+        self.rotate_button.clicked.connect(self.update_projection)
         self.rotate_button.setStyleSheet("background-color: #d5006d; color: white;") 
         self.rotation_layout.addWidget(self.rotate_button)
         #add under custom filter
         self.custom_filter_layout.addLayout(self.rotation_layout)
 
         # Create flip buttons
-        self.flip_button_layout = QVBoxLayout()
+        self.flip_button_layout = QHBoxLayout()
 
         # Horizontal flip button
         self.horizontal_flip_button = QPushButton("Flip Horizontal")
         self.horizontal_flip_button.clicked.connect(self.apply_flip_horizontal)
+        self.horizontal_flip_button.clicked.connect(self.update_histogram)
+        self.horizontal_flip_button.clicked.connect(self.update_projection)
         self.horizontal_flip_button.setStyleSheet("background-color: #d5006d; color: white;")  # Light pink with black text
         self.flip_button_layout.addWidget(self.horizontal_flip_button)
 
         # Vertical flip button
         self.vertical_flip_button = QPushButton("Flip Vertical")
         self.vertical_flip_button.clicked.connect(self.apply_flip_vertical)
+        self.vertical_flip_button.clicked.connect(self.update_histogram)
+        self.vertical_flip_button.clicked.connect(self.update_projection)
         self.vertical_flip_button.setStyleSheet("background-color: #d5006d; color: white;")  # Light pink with black text
         self.flip_button_layout.addWidget(self.vertical_flip_button)
 
         # Add the flip buttons layout to the main layout
         self.custom_filter_layout.addLayout(self.flip_button_layout)
+
+        # Histogram layout
+        self.histogram_layout = QVBoxLayout()
+        self.histogram_label = QLabel("Histogram")
+        self.histogram_label.setStyleSheet("font-weight: bold;")
+        self.histogram_layout.addWidget(self.histogram_label)
+        self.canvas_histogram = MplCanvas(self, width=7, height=6, dpi=100)
+        self.histogram_layout.addWidget(self.canvas_histogram)
+        self.custom_filter_layout.addLayout(self.histogram_layout)
+        
+
+        # Projection layout
+        self.projection_layout = QVBoxLayout()
+        self.projection_label = QLabel("Projection")
+        self.projection_label.setStyleSheet("font-weight: bold;")
+        self.projection_layout.addWidget(self.projection_label)
+        self.projection_type = QComboBox(self)
+        self.projection_type.addItems(["Horizontal", "Vertical"])
+        self.projection_type.setCurrentIndex(0)  
+        self.canvas_projection = MplCanvas(self, width=7, height=6, dpi=100)
+        self.projection_layout.addWidget(self.projection_type)
+        self.projection_layout.addWidget(self.canvas_projection)
+        self.projection_type.currentIndexChanged.connect(self.update_projection)
+        self.custom_filter_layout.addLayout(self.projection_layout)
 
         # Buttons layout
         self.button_layout2 = QVBoxLayout()
@@ -189,11 +282,15 @@ class ImageProcessorGUI(QWidget):
         # Apply changes button
         self.apply_button = QPushButton("Apply Changes")
         self.apply_button.clicked.connect(self.apply_changes)
+        self.apply_button.clicked.connect(self.update_histogram)
+        self.apply_button.clicked.connect(self.update_projection)
         self.button_layout2.addWidget(self.apply_button)
     
         # Reset button
         self.reset_button = QPushButton("Reset")
         self.reset_button.clicked.connect(self.reset_image)
+        self.reset_button.clicked.connect(self.update_histogram)
+        self.apply_button.clicked.connect(self.update_projection)
         self.button_layout2.addWidget(self.reset_button)
 
         # Layouts
@@ -201,6 +298,7 @@ class ImageProcessorGUI(QWidget):
         self.main_layout.addLayout(self.slider_layout)
         self.main_layout.addLayout(self.button_layout)
         self.main_layout.addLayout(self.button_layout_slow)
+        self.main_layout.addLayout(self.button_layout_edge)
         
         self.main_layout.addLayout(self.button_layout2)
 
@@ -216,6 +314,8 @@ class ImageProcessorGUI(QWidget):
         load_menu = menu_bar.addMenu("Load")
         load_action = QAction("Load Image", self)
         load_action.triggered.connect(self.load_image)
+        load_action.triggered.connect(self.update_histogram)
+        load_action.triggered.connect(self.update_projection)
         load_menu.addAction(load_action)
 
         # Save menu
@@ -267,6 +367,7 @@ class ImageProcessorGUI(QWidget):
             self.display_image(self.original_image, self.original_label)
             self.display_image(self.image_processor.image, self.processed_label)
 
+
             self.brightness_slider.setValue(0)
             self.contrast_slider.setValue(100)  # Reset contrast slider to default
 
@@ -278,30 +379,49 @@ class ImageProcessorGUI(QWidget):
         if image is None:
             return
 
-        # Get image dimensions
         height, width = image.shape[:2]
-
-        # Ensure the image is in RGB format (3 channels)
         if len(image.shape) == 2:  # Grayscale image (2D)
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)  # Convert grayscale to RGB
             height, width = image.shape[:2]
-        
-        # Convert the image to a byte array for QImage
+
         bytes_per_line = width * 3  # Assuming 3 channels (RGB)
         image_data = image.tobytes()
 
-        # Create QImage from image data
         q_img = QImage(image_data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
 
-        # Create QPixmap from QImage
         pixmap = QPixmap.fromImage(q_img)
 
-        # Scale the pixmap to fit inside the label while maintaining the aspect ratio
         pixmap = pixmap.scaled(label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
 
-        # Set the QPixmap to the label
         label.setPixmap(pixmap)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    def update_histogram(self):
+        if self.image_processor:
+            if self.processed_image is not None:
+                r = self.processed_image[:, :, 0].flatten()
+                g = self.processed_image[:, :, 1].flatten()
+                b = self.processed_image[:, :, 2].flatten()
+            else:
+                r = self.image_processor.image[:, :, 0].flatten()
+                g = self.image_processor.image[:, :, 1].flatten()
+                b = self.image_processor.image[:, :, 2].flatten()
+
+            self.canvas_histogram.axes.cla()
+
+            self.canvas_histogram.axes.hist(r, bins=256, color='r', alpha=0.4, label='Red')
+            self.canvas_histogram.axes.hist(g, bins=256, color='g', alpha=0.4, label='Green')
+            self.canvas_histogram.axes.hist(b, bins=256, color='b', alpha=0.4, label='Blue')
+
+            self.canvas_histogram.axes.tick_params(axis='both', labelsize=6)
+            self.canvas_histogram.axes.set_title("RGB histogram", fontsize=8)
+            self.canvas_histogram.axes.set_xlabel("Pixel value", fontsize=7)
+            self.canvas_histogram.axes.set_ylabel("Number of pixels", fontsize=7)
+            self.canvas_histogram.axes.set_xlim(0, 255)
+            self.canvas_histogram.axes.spines['left'].set_visible(True) 
+            self.canvas_histogram.axes.spines['bottom'].set_visible(True)
+            self.canvas_histogram.figure.tight_layout()  
+            self.canvas_histogram.draw()
 
 
     def apply_brightness(self):
@@ -357,10 +477,10 @@ class ImageProcessorGUI(QWidget):
             self.processed_image = self.image_processor.sharpen()
             self.display_image(self.processed_image, self.processed_label)
 
-    def apply_edge_detection(self):
+    def apply_edge_detection(self, method):
         """Apply edge detection to the image."""
         if self.image_processor:
-            self.processed_image = self.image_processor.edge_detection()
+            self.processed_image = self.image_processor.edge_detection(method=method)
             self.display_image(self.processed_image, self.processed_label)
 
     def update_kernel_input_grid(self):
@@ -441,7 +561,6 @@ class ImageProcessorGUI(QWidget):
             # Display the flipped image in the processed label
             self.display_image(self.processed_image, self.processed_label)
 
-
     
     def apply_changes(self):
         """Apply the current modifications to the image, allowing further edits."""
@@ -510,6 +629,43 @@ class ImageProcessorGUI(QWidget):
                 file_path += f".{format}"  # Ensure the file has the correct extension
             
             cv2.imwrite(file_path, cv2.cvtColor(self.processed_image, cv2.COLOR_RGB2BGR))
+
+
+    def update_projection(self):
+        if self.image_processor:
+            if self.processed_image is not None:
+                image_gray = np.mean(self.processed_image, axis=2) if self.processed_image.ndim == 3 else self.processed_image
+                projection_h = np.sum(image_gray, axis=1)
+                projection_v = np.sum(image_gray, axis=0)
+
+            else:
+                image_gray = np.mean(self.image_processor.image, axis=2) if self.image_processor.image.ndim == 3 else self.image_processor.image
+                projection_h = np.sum(image_gray, axis=1)
+                projection_v = np.sum(image_gray, axis=0)
+
+            selected_projection = self.projection_type.currentText()
+
+            self.canvas_projection.axes.cla()
+
+            if selected_projection == "Horizontal":
+                self.canvas_projection.axes.plot(projection_h, color='b', label='Horizontal')
+                self.canvas_projection.axes.set_xlabel("Pixel row", fontsize=7)
+                self.canvas_projection.axes.set_ylabel("Number of pixels", fontsize=7)
+                self.canvas_projection.axes.set_title("Horizontal Projection", fontsize=8)
+            elif selected_projection == "Vertical":
+                self.canvas_projection.axes.plot(projection_v, color='r', label='Vertical')
+                self.canvas_projection.axes.set_xlabel("Pixel column", fontsize=7)
+                self.canvas_projection.axes.set_ylabel("Number of pixels", fontsize=7)
+                self.canvas_projection.axes.set_title("Vertical Projection", fontsize=8)
+
+            self.canvas_projection.axes.tick_params(axis='both', labelsize=6)
+            self.canvas_projection.figure.tight_layout()
+            self.canvas_projection.axes.spines['left'].set_visible(True) 
+            self.canvas_projection.axes.spines['bottom'].set_visible(True)
+
+            self.canvas_projection.draw()
+
+        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
