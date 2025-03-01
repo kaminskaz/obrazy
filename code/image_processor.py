@@ -75,6 +75,9 @@ class ImageProcessor:
         return binary.astype(np.uint8)
 
     def convolve(self, kernel):
+        """
+        Custom convolve function to apply a kernel to the image.
+        """
         kernel_size = kernel.shape[0]
         pad = kernel_size // 2
 
@@ -168,18 +171,30 @@ class ImageProcessor:
     #     return np.clip(output, 0, 255).astype(np.uint8)
 
     def average_filter(self):
+        """
+        Apply an average filter to the image.
+        """
         kernel = self.kernels['average']
         return self.convolve(kernel)
     
     def gaussian_filter(self):
+        """
+        Apply a Gaussian filter to the image.
+        """
         kernel = self.kernels['gaussian_blur']
         return self.convolve(kernel)
     
     def sharpen(self):
+        """
+        Apply a sharpening filter to the image.
+        """
         kernel = self.kernels['sharpen']
         return self.convolve(kernel)
     
     def edge_detection(self, method):
+        """
+        Apply an edge detection filter to the image according to the specified method.
+        """
         if method == 'sobel':
             kernel_h = self.kernels['edge_sobel_horizontal']
             kernel_v = self.kernels['edge_sobel_vertical']
@@ -194,8 +209,9 @@ class ImageProcessor:
         if method == 'sobel' or method == 'roberts_cross':
             output_h = self.convolve(kernel_h)
             output_v = self.convolve(kernel_v)
-            # output = np.sqrt(output_h ** 2 + output_v ** 2)
-            output = np.maximum(output_h, output_v)
+            #output = np.sqrt(output_h ** 2 + output_v ** 2)
+            #output = np.maximum(output_h, output_v)
+            output = abs(output_h) + abs(output_v)
             
         else:
             output = self.convolve(kernel)
@@ -203,27 +219,17 @@ class ImageProcessor:
         
     
     def apply_custom_filter(self, kernel):
-        """Apply a custom filter to the image using the provided kernel."""
+        """
+        Apply a custom filter to the image using the provided kernel.
+        """
         print(kernel)
         return self.convolve(kernel)
 
-        # pad = kernel.shape[0] // 2
-        # image_float = self.image.astype(np.float32)
-        # output = np.zeros_like(image_float)
-
-        # for c in range(image_float.shape[2]):
-        #     padded = np.pad(image_float[..., c], pad, mode='edge')
-        #     for i in range(image_float.shape[0]):
-        #         for j in range(image_float.shape[1]):
-        #             region = padded[i:i + kernel.shape[0], j:j + kernel.shape[1]]
-        #             output[i, j, c] = np.sum(region * kernel)
-
-        # return np.clip(output, 0, 255).astype(np.uint8)
-    
-
 
     def rotate(self, angle):
-        """Rotate the image by the given angle """
+        """
+        Rotate the image by the given angle 
+        """
         # Convert angle to radians
         theta = np.radians(angle)
         
@@ -276,8 +282,10 @@ class ImageProcessor:
         return rotated_image
     
     def flip(self, direction):
-        """Flip the image in the specified direction. 
-        direction: 'horizontal' or 'vertical'"""
+        """
+        Flip the image in the specified direction. 
+        direction: 'horizontal' or 'vertical
+        '"""
         # Get the image dimensions
         height, width, channels = self.image.shape
         
