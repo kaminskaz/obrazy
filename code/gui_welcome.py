@@ -26,22 +26,6 @@ class WelcomeDialog(QDialog):
         description_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         description_label.setWordWrap(True)
 
-        # Example Image Section
-        image_layout = QHBoxLayout()
-
-        example_image1 = QLabel()
-        example_image1.setPixmap(QPixmap("img/img1.JPG").scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio))
-
-
-        example_image2 = QLabel()
-        example_image2.setPixmap(QPixmap("img/img4.jpg").scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio))
-
-        example_image4 = QLabel()
-        example_image4.setPixmap(QPixmap("img/img6.png").scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio))
-
-        image_layout.addWidget(example_image1)
-        image_layout.addWidget(example_image2)
-        image_layout.addWidget(example_image4)
 
         # OK Button to Close
         ok_button = QPushButton("Get Started")
@@ -51,7 +35,6 @@ class WelcomeDialog(QDialog):
         # Adding Widgets to Layout  
         layout.addWidget(title_label)
         layout.addWidget(description_label)
-        layout.addLayout(image_layout)
         layout.addWidget(ok_button)
 
         self.setLayout(layout)
