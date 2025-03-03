@@ -7,7 +7,7 @@ class WelcomeDialog(QDialog):
         super().__init__()
 
         self.setWindowTitle("Welcome to Image Processing App")
-        self.setGeometry(200, 200, 600, 500)
+        self.setGeometry(200, 200, 500, 300)
 
         layout = QVBoxLayout()
 
