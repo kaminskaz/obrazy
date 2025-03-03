@@ -21,9 +21,12 @@ class ImageProcessor:
         'edge_sobel_vertical': np.array([[-1, -2, -1],
                                 [0, 0, 0],
                                 [1, 2, 1]]),
-        'edge_prewitt': np.array([[1, 0, -1],
+        'edge_prewitt_horizontal': np.array([[1, 0, -1],
                                   [1, 0, -1],
                                   [1, 0, -1]]),
+        'edge_prewitt_vertical': np.array([[1, 1, 1],
+                                  [0, 0, 0],
+                                  [-1, -1, -1]]),
         'gaussian_blur': np.array([[1, 2, 1],
                                   [2, 4, 2],
                                   [1, 2, 1]]) / 16,
@@ -199,18 +202,19 @@ class ImageProcessor:
             kernel_h = self.kernels['edge_sobel_horizontal']
             kernel_v = self.kernels['edge_sobel_vertical']
         elif method == 'prewitt':
-            kernel = self.kernels['edge_prewitt']
+            kernel_h = self.kernels['edge_prewitt_horizontal']
+            kernel_v = self.kernels['edge_prewitt_vertical']
         elif method == 'laplacian':
             kernel = self.kernels['laplacian']
         elif method == 'roberts_cross':
             kernel_h = self.kernels['roberts_cross_horizontal']
             kernel_v = self.kernels['roberts_cross_vertical']
         
-        if method == 'sobel' or method == 'roberts_cross':
+        if method == 'sobel' or method == 'roberts_cross' or method == 'prewitt':
             output_h = self.convolve(kernel_h)
             output_v = self.convolve(kernel_v)
-            output = np.sqrt(output_h ** 2 + output_v ** 2)
-            #output = np.maximum(output_h, output_v)
+            # output = np.sqrt(output_h ** 2 + output_v ** 2)
+            output = abs(output_h) + abs(output_v)
             
         else:
             output = self.convolve(kernel)
