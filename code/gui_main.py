@@ -24,14 +24,12 @@ class MplCanvas(FigureCanvas):
         self.axes.spines['bottom'].set_visible(False)
         fig.tight_layout() 
         self.draw()
-
+    
 class ImageProcessorGUI(QWidget):  
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Bildverarbeitung - Image Processing")
-        self.setGeometry(100, 100, 1200, 900)
-
         self.image_path = None  
         self.image_processor = None  
         self.processed_image = None  
@@ -68,8 +66,8 @@ class ImageProcessorGUI(QWidget):
         # Brightness slider
         self.brightness_label = QLabel("Brightness:")
         self.brightness_slider = QSlider(Qt.Orientation.Horizontal)
-        self.brightness_slider.setMinimum(-100)
-        self.brightness_slider.setMaximum(100)
+        self.brightness_slider.setMinimum(-255)
+        self.brightness_slider.setMaximum(255)
         self.brightness_slider.setValue(0)
         self.brightness_slider.valueChanged.connect(self.apply_brightness)
         self.brightness_slider.valueChanged.connect(self.update_histogram)
@@ -78,8 +76,8 @@ class ImageProcessorGUI(QWidget):
         # Contrast slider
         self.contrast_label = QLabel("Contrast:")
         self.contrast_slider = QSlider(Qt.Orientation.Horizontal)
-        self.contrast_slider.setMinimum(10)
-        self.contrast_slider.setMaximum(300)
+        self.contrast_slider.setMinimum(0)
+        self.contrast_slider.setMaximum(500)
         self.contrast_slider.setValue(100)
         self.contrast_slider.valueChanged.connect(self.apply_contrast)
         self.contrast_slider.valueChanged.connect(self.update_histogram)
@@ -252,13 +250,39 @@ class ImageProcessorGUI(QWidget):
         # Add the flip buttons layout to the main layout
         self.custom_filter_layout.addLayout(self.flip_button_layout)
 
+        #Checkboxes for histogram
+        self.red_checkbox = QCheckBox('Red')
+        self.green_checkbox = QCheckBox('Green')
+        self.blue_checkbox = QCheckBox('Blue')
+        self.mean_checkbox = QCheckBox('Mean')
+        
+        # Set default checkboxes (enable all colors by default)
+        self.red_checkbox.setChecked(True)
+        self.green_checkbox.setChecked(True)
+        self.blue_checkbox.setChecked(True)
+        self.mean_checkbox.setChecked(False)
+        # Connect the checkboxes' stateChanged signal to the update_histogram method
+        self.red_checkbox.stateChanged.connect(self.update_histogram)
+        self.green_checkbox.stateChanged.connect(self.update_histogram)
+        self.blue_checkbox.stateChanged.connect(self.update_histogram)
+        self.mean_checkbox.stateChanged.connect(self.update_histogram)
+        
+        # Create a horizontal layout for the checkboxes
+        checkbox_layout = QHBoxLayout()
+        self.histogram_label = QLabel("Histogram")
+        checkbox_layout.addWidget(self.histogram_label)
+        checkbox_layout.addWidget(self.red_checkbox)
+        checkbox_layout.addWidget(self.green_checkbox)
+        checkbox_layout.addWidget(self.blue_checkbox)
+        checkbox_layout.addWidget(self.mean_checkbox)
+
         # Histogram layout
         self.histogram_layout = QVBoxLayout()
-        self.histogram_label = QLabel("Histogram")
         self.histogram_label.setStyleSheet("font-weight: bold;")
-        self.histogram_layout.addWidget(self.histogram_label)
         self.canvas_histogram = MplCanvas(self, width=7, height=6, dpi=100)
         self.histogram_layout.addWidget(self.canvas_histogram)
+
+        self.custom_filter_layout.addLayout(checkbox_layout)
         self.custom_filter_layout.addLayout(self.histogram_layout)
         
 
@@ -406,12 +430,20 @@ class ImageProcessorGUI(QWidget):
                 r = self.image_processor.image[:, :, 0].flatten()
                 g = self.image_processor.image[:, :, 1].flatten()
                 b = self.image_processor.image[:, :, 2].flatten()
+            combined = np.concatenate((r, g, b), axis=0)
+            mean = np.mean(combined)
 
             self.canvas_histogram.axes.cla()
 
-            self.canvas_histogram.axes.hist(r, bins=256, color='r', alpha=0.4, label='Red')
-            self.canvas_histogram.axes.hist(g, bins=256, color='g', alpha=0.4, label='Green')
-            self.canvas_histogram.axes.hist(b, bins=256, color='b', alpha=0.4, label='Blue')
+            # Plot selected color channels based on checkbox state
+            if self.red_checkbox.isChecked():
+                self.canvas_histogram.axes.hist(r, bins=256, color='r', alpha=0.4, label='Red')
+            if self.green_checkbox.isChecked():
+                self.canvas_histogram.axes.hist(g, bins=256, color='g', alpha=0.4, label='Green')
+            if self.blue_checkbox.isChecked():
+                self.canvas_histogram.axes.hist(b, bins=256, color='b', alpha=0.4, label='Blue')
+            if self.mean_checkbox.isChecked():
+                self.canvas_histogram.axes.hist(combined, bins=256, color='gray', alpha=0.4, label='Mean')
 
             self.canvas_histogram.axes.tick_params(axis='both', labelsize=6)
             self.canvas_histogram.axes.set_title("RGB histogram", fontsize=8)

@@ -194,8 +194,8 @@ class ImageProcessor:
         if method == 'sobel' or method == 'roberts_cross':
             output_h = self.convolve(kernel_h)
             output_v = self.convolve(kernel_v)
-            # output = np.sqrt(output_h ** 2 + output_v ** 2)
-            output = np.maximum(output_h, output_v)
+            output = np.sqrt(output_h ** 2 + output_v ** 2)
+            #output = np.maximum(output_h, output_v)
             
         else:
             output = self.convolve(kernel)
