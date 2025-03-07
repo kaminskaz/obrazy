@@ -76,9 +76,9 @@ class ImageProcessorGUI(QWidget):
         # Contrast slider
         self.contrast_label = QLabel("Contrast:")
         self.contrast_slider = QSlider(Qt.Orientation.Horizontal)
-        self.contrast_slider.setMinimum(0)
-        self.contrast_slider.setMaximum(500)
-        self.contrast_slider.setValue(100)
+        self.contrast_slider.setMinimum(-255)
+        self.contrast_slider.setMaximum(255)
+        self.contrast_slider.setValue(0)
         self.contrast_slider.valueChanged.connect(self.apply_contrast)
         self.contrast_slider.valueChanged.connect(self.update_histogram)
         self.contrast_slider.valueChanged.connect(self.update_projection)
@@ -88,7 +88,7 @@ class ImageProcessorGUI(QWidget):
         self.binarization_slider = QSlider(Qt.Orientation.Horizontal)
         self.binarization_slider.setMinimum(0)
         self.binarization_slider.setMaximum(255)
-        self.binarization_slider.setValue(128)  # Default value
+        self.binarization_slider.setValue(128) 
         self.binarization_slider.valueChanged.connect(self.binarization)
         self.binarization_slider.valueChanged.connect(self.update_histogram)
         self.binarization_slider.valueChanged.connect(self.update_projection)
@@ -250,7 +250,7 @@ class ImageProcessorGUI(QWidget):
         # Add the flip buttons layout to the main layout
         self.custom_filter_layout.addLayout(self.flip_button_layout)
 
-        #Checkboxes for histogram
+        # Checkboxes for histogram
         self.red_checkbox = QCheckBox('Red')
         self.green_checkbox = QCheckBox('Green')
         self.blue_checkbox = QCheckBox('Blue')
@@ -423,13 +423,15 @@ class ImageProcessorGUI(QWidget):
     def update_histogram(self):
         if self.image_processor:
             if self.processed_image is not None:
-                r = self.processed_image[:, :, 0].flatten()
-                g = self.processed_image[:, :, 1].flatten()
-                b = self.processed_image[:, :, 2].flatten()
+                processed_image = self.processed_image
+                r = processed_image[:, :, 0].flatten()
+                g = processed_image[:, :, 1].flatten()
+                b = processed_image[:, :, 2].flatten()
             else:
-                r = self.image_processor.image[:, :, 0].flatten()
-                g = self.image_processor.image[:, :, 1].flatten()
-                b = self.image_processor.image[:, :, 2].flatten()
+                processed_image = self.image_processor.image
+                r = processed_image[:, :, 0].flatten()
+                g = processed_image[:, :, 1].flatten()
+                b = processed_image[:, :, 2].flatten()
             combined = np.concatenate((r, g, b), axis=0)
             mean = np.mean(combined)
 
@@ -437,13 +439,13 @@ class ImageProcessorGUI(QWidget):
 
             # Plot selected color channels based on checkbox state
             if self.red_checkbox.isChecked():
-                self.canvas_histogram.axes.hist(r, bins=256, color='r', alpha=0.4, label='Red')
+                self.canvas_histogram.axes.hist(r, bins=256, range=(0,255), color='r', alpha=0.4, label='Red')
             if self.green_checkbox.isChecked():
-                self.canvas_histogram.axes.hist(g, bins=256, color='g', alpha=0.4, label='Green')
+                self.canvas_histogram.axes.hist(g, bins=256, range=(0,255), color='g', alpha=0.4, label='Green')
             if self.blue_checkbox.isChecked():
-                self.canvas_histogram.axes.hist(b, bins=256, color='b', alpha=0.4, label='Blue')
+                self.canvas_histogram.axes.hist(b, bins=256, range=(0,255), color='b', alpha=0.4, label='Blue')
             if self.mean_checkbox.isChecked():
-                self.canvas_histogram.axes.hist(combined, bins=256, color='gray', alpha=0.4, label='Mean')
+                self.canvas_histogram.axes.hist(combined, bins=256, range=(0,255), color='gray', alpha=0.4, label='Mean')
 
             self.canvas_histogram.axes.tick_params(axis='both', labelsize=6)
             self.canvas_histogram.axes.set_title("RGB histogram", fontsize=8)
@@ -466,7 +468,7 @@ class ImageProcessorGUI(QWidget):
     def apply_contrast(self):
         """Change contrast of the image based on slider value."""
         if self.image_processor:
-            contrast_value = self.contrast_slider.value()/100
+            contrast_value = self.contrast_slider.value()
             self.processed_image = self.image_processor.adjust_contrast(contrast_value)
             self.display_image(self.processed_image, self.processed_label)
 
@@ -679,13 +681,14 @@ class ImageProcessorGUI(QWidget):
 
             self.canvas_projection.axes.cla()
 
+
             if selected_projection == "Horizontal":
-                self.canvas_projection.axes.plot(projection_h, color='b', label='Horizontal')
+                self.canvas_projection.axes.hist(np.arange(len(projection_h)), alpha=0.4, bins=len(projection_h),  weights=projection_h, color='b', label='Horizontal')
                 self.canvas_projection.axes.set_xlabel("Pixel row", fontsize=7)
                 self.canvas_projection.axes.set_ylabel("Number of pixels", fontsize=7)
                 self.canvas_projection.axes.set_title("Horizontal Projection", fontsize=8)
             elif selected_projection == "Vertical":
-                self.canvas_projection.axes.plot(projection_v, color='r', label='Vertical')
+                self.canvas_projection.axes.hist(np.arange(len(projection_v)), alpha=0.4, bins=len(projection_v),  weights=projection_v, color='r', label='Vertical')
                 self.canvas_projection.axes.set_xlabel("Pixel column", fontsize=7)
                 self.canvas_projection.axes.set_ylabel("Number of pixels", fontsize=7)
                 self.canvas_projection.axes.set_title("Vertical Projection", fontsize=8)
