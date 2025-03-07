@@ -96,83 +96,6 @@ class ImageProcessor:
 
         return np.clip(output, 0, 255).astype(np.uint8)
 
-    # filters
-    # kernels dictionary
-
-    #TO DO: remove in the final version, for now i leave it here just in case
-
-    # def average_filter(self, kernel_size=3):
-    #     """
-    #     Average filter 
-    #     """
-    #     pad = kernel_size // 2
-    #     image_float = self.image.astype(np.float32)
-    #     output = np.zeros_like(image_float)
-    #     for c in range(self.image.shape[2]):
-    #         padded = np.pad(image_float[..., c], pad, mode='edge')
-    #         for i in range(self.image.shape[0]):
-    #             for j in range(self.image.shape[1]):
-    #                 region = padded[i:i+kernel_size, j:j+kernel_size]
-    #                 output[i, j, c] = np.mean(region)
-    #     return np.clip(output, 0, 255).astype(np.uint8)
-
-    # def gaussian_filter(self, kernel_size=3, sigma=1.0):
-    #     """
-    #     Gaussian filter
-    #     """
-    #     ax = np.arange(-kernel_size // 2 + 1., kernel_size // 2 + 1.)
-    #     x_dist, y_dist = np.meshgrid(ax, ax)
-    #     kernel = np.exp(-(x_dist**2 + y_dist**2) / (2. * sigma**2))
-    #     kernel = kernel / np.sum(kernel)
-        
-    #     pad = kernel_size // 2
-    #     image_float = self.image.astype(np.float32)
-    #     output = np.zeros_like(image_float)
-    #     for c in range(self.image.shape[2]):
-    #         padded = np.pad(image_float[..., c], pad, mode='edge')
-    #         for i in range(self.image.shape[0]):
-    #             for j in range(self.image.shape[1]):
-    #                 region = padded[i:i+kernel_size, j:j+kernel_size]
-    #                 output[i, j, c] = np.sum(region * kernel)
-    #     return np.clip(output, 0, 255).astype(np.uint8)
-
-    # def sharpen(self):
-    #     """
-    #     Sharpening filter
-    #     """
-    #     kernel = np.array([[0, -1, 0],
-    #                        [-1, 5, -1],
-    #                        [0, -1, 0]])
-    #     kernel_size = kernel.shape[0]
-    #     pad = kernel_size // 2
-    #     image_float = self.image.astype(np.float32)
-    #     output = np.zeros_like(image_float)
-    #     for c in range(self.image.shape[2]):
-    #         padded = np.pad(image_float[..., c], pad, mode='edge')
-    #         for i in range(self.image.shape[0]):
-    #             for j in range(self.image.shape[1]):
-    #                 region = padded[i:i+kernel_size, j:j+kernel_size]
-    #                 output[i, j, c] = np.sum(region * kernel)
-    #     return np.clip(output, 0, 255).astype(np.uint8)
-    
-    # def edge_detection(self):
-    #     """
-    #     Edge detection
-    #     """
-    #     kernel = np.array([[1, 0, -1],
-    #                        [0, 0, 0],
-    #                        [-1, 0, 1]])
-    #     kernel_size = kernel.shape[0]
-    #     pad = kernel_size // 2
-    #     image_float = self.image.astype(np.float32)
-    #     output = np.zeros_like(image_float)
-    #     for c in range(self.image.shape[2]):
-    #         padded = np.pad(image_float[..., c], pad, mode='edge')
-    #         for i in range(self.image.shape[0]):
-    #             for j in range(self.image.shape[1]):
-    #                 region = padded[i:i+kernel_size, j:j+kernel_size]
-    #                 output[i, j, c] = np.sum(region * kernel)
-    #     return np.clip(output, 0, 255).astype(np.uint8)
 
     def average_filter(self):
         """
@@ -221,6 +144,82 @@ class ImageProcessor:
             output = self.convolve(kernel)
         return output
         
+
+    def erosion(self, image=None, kernel=None):
+        """
+        Erosion of an image
+        """
+        if kernel is None:
+            kernel = np.ones((3, 3), dtype=np.uint8)  
+        
+        if image is None:
+            image = self.image
+
+        image = self.binarization(image) 
+        kernel_size = kernel.shape[0]
+        pad = kernel_size // 2
+
+        image_padded = np.pad(image, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
+        output = np.zeros_like(image, dtype=np.uint8)
+
+        for i in range(image.shape[0]):
+            for j in range(image.shape[1]):
+                region = image_padded[i:i + kernel_size, j:j + kernel_size]
+
+                if (region == kernel).all():
+                    output[i, j] = 1
+
+        return output
+
+    
+    def dilation(self, image=None, kernel=None):
+        """
+        Dilation of an image
+        """
+        if kernel is None:
+            kernel = np.ones((3, 3), dtype=np.uint8)  
+        
+        if image is None:
+            image = self.image
+
+        image = self.binarization(image)  
+        kernel_size = kernel.shape[0]
+        pad = kernel_size // 2
+
+        image_padded = np.pad(image, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
+        output = np.zeros_like(image, dtype=np.uint8)
+
+        for i in range(image.shape[0]):
+            for j in range(image.shape[1]):
+                region = image_padded[i:i + kernel_size, j:j + kernel_size]
+
+                if (region * kernel).any():
+                    output[i, j] = 1
+
+        return output
+
+    def opening(self, kernel=None):
+        """
+        Opening of an image
+        """
+        if kernel is None:
+            kernel = np.ones((3, 3), dtype=np.uint8)   
+
+        eroded_img = self.erosion(self.image, kernel) 
+
+        return self.dilation(eroded_img, kernel)  
+
+    def closing(self, kernel=None):  
+        """
+        Closing of an image
+        """
+        if kernel is None:
+            kernel = np.ones((3, 3), dtype=np.uint8)   
+
+        dilated_img = self.dilation(self.image, kernel) 
+
+        return self.erosion(dilated_img, kernel)    
+
     
     def apply_custom_filter(self, kernel):
         """

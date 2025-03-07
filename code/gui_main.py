@@ -175,6 +175,37 @@ class ImageProcessorGUI(QWidget):
         self.edge_detection_button_roberts.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
         self.button_layout_edge.addWidget(self.edge_detection_button_roberts)
 
+        # Morphological Operations
+        self.morphological_operations_layout = QHBoxLayout()
+
+        self.erosion_button = QPushButton("Errosion")
+        self.erosion_button.clicked.connect(self.erosion)
+        self.erosion_button.clicked.connect(self.update_histogram)
+        self.erosion_button.clicked.connect(self.update_projection)
+        self.erosion_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.morphological_operations_layout.addWidget(self.erosion_button)
+
+        self.dilation_button = QPushButton("Dilation")
+        self.dilation_button.clicked.connect(self.dilation)
+        self.dilation_button.clicked.connect(self.update_histogram)
+        self.dilation_button.clicked.connect(self.update_projection)
+        self.dilation_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.morphological_operations_layout.addWidget(self.dilation_button)
+
+        self.opening_button = QPushButton("Opening")
+        self.opening_button.clicked.connect(self.opening)
+        self.opening_button.clicked.connect(self.update_histogram)
+        self.opening_button.clicked.connect(self.update_projection)
+        self.opening_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.morphological_operations_layout.addWidget(self.opening_button)
+
+        self.closing_button = QPushButton("Closing")
+        self.closing_button.clicked.connect(self.closing)
+        self.closing_button.clicked.connect(self.update_histogram)
+        self.closing_button.clicked.connect(self.update_projection)
+        self.closing_button.setStyleSheet("background-color: #d5006d; color: white;")  # Darker pink with white text
+        self.morphological_operations_layout.addWidget(self.closing_button)
+
         # Custom Filter Layout
         self.custom_filter_layout = QVBoxLayout()
         self.custom_label = QLabel("Custom kernel filter")
@@ -323,7 +354,7 @@ class ImageProcessorGUI(QWidget):
         self.main_layout.addLayout(self.button_layout)
         self.main_layout.addLayout(self.button_layout_slow)
         self.main_layout.addLayout(self.button_layout_edge)
-        
+        self.main_layout.addLayout(self.morphological_operations_layout)
         self.main_layout.addLayout(self.button_layout2)
 
         self.big_layout.addLayout(self.main_layout)
@@ -393,7 +424,7 @@ class ImageProcessorGUI(QWidget):
 
 
             self.brightness_slider.setValue(0)
-            self.contrast_slider.setValue(100)  # Reset contrast slider to default
+            self.contrast_slider.setValue(0)  # Reset contrast slider to default
 
 
     def display_image(self, image, label):
@@ -516,6 +547,31 @@ class ImageProcessorGUI(QWidget):
         if self.image_processor:
             self.processed_image = self.image_processor.edge_detection(method=method)
             self.display_image(self.processed_image, self.processed_label)
+    
+    def erosion(self):
+        """Apply erosion to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.erosion()
+            self.display_image(self.processed_image, self.processed_label)
+    
+    def dilation(self):
+        """Apply dilation to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.dilation()
+            self.display_image(self.processed_image, self.processed_label)
+
+    def opening(self):
+        """Apply opening to the image."""
+        if self.image_processor:
+            self.processed_image = self.image_processor.opening()
+            self.display_image(self.processed_image, self.processed_label)
+
+    def closing(self):
+        """Apply closing to the image."""     
+        if self.image_processor:
+            self.processed_image = self.image_processor.closing()
+            self.display_image(self.processed_image, self.processed_label)
+
 
     def update_kernel_input_grid(self):
         """Update the grid layout based on the selected kernel size."""
@@ -649,7 +705,8 @@ class ImageProcessorGUI(QWidget):
     def reset_slider_values(self):
         """Reset the slider values."""
         self.brightness_slider.setValue(0)
-        self.contrast_slider.setValue(100)
+        self.contrast_slider.setValue(0)
+        self.binarization_slider.setValue(128)
 
     def save_image(self, format):
         """Save the processed image in the selected format."""
