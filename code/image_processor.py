@@ -60,7 +60,8 @@ class ImageProcessor:
         """
         Contrast adjustment
         """
-        contrasted = np.clip((self.image.astype(np.int16) - 128) * float(factor) + 128, 0, 255)
+        f = (259 * (factor + 255)) / (255 * (259 - factor))
+        contrasted = np.clip((self.image.astype(np.int16) - 128) * f + 128, 0, 255)
         return contrasted.astype(np.uint8)
 
     def negative(self):
@@ -213,7 +214,7 @@ class ImageProcessor:
         if method == 'sobel' or method == 'roberts_cross' or method == 'prewitt':
             output_h = self.convolve(kernel_h)
             output_v = self.convolve(kernel_v)
-            # output = np.sqrt(output_h ** 2 + output_v ** 2)
+            # output = np.sqrt(output_h ** 2 + output_v ** 2) for some reason not working 
             output = abs(output_h) + abs(output_v)
             
         else:
