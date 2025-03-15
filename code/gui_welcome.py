@@ -26,7 +26,6 @@ class WelcomeDialog(QDialog):
         description_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         description_label.setWordWrap(True)
 
-
         # OK Button to Close
         ok_button = QPushButton("Get Started")
         ok_button.clicked.connect(self.accept)

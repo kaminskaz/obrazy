@@ -43,10 +43,8 @@ class ImageProcessor:
         """
         gray = np.dot(self.image[..., :3], [0.114, 0.587, 0.299])
         gray = gray.astype(np.uint8)
-
         # Convert (H, W) → (H, W, 3) for GUI compatibility
-        gray = np.stack([gray] * 3, axis=-1)  # Duplicate grayscale values across RGB channels
-
+        gray = np.stack([gray] * 3, axis=-1)
         return gray
 
     def adjust_brightness(self, value):
@@ -95,7 +93,6 @@ class ImageProcessor:
                     output[i, j, c] = np.sum(region * kernel)  
 
         return np.clip(output, 0, 255).astype(np.uint8)
-
 
     def average_filter(self):
         """
@@ -166,7 +163,6 @@ class ImageProcessor:
 
         return self.convolute_binary(dilated_img, kernel_shape="square", operation="erosion")
     
-    
     def get_kernel_bin(self, shape="square"):
         """Generate a kernel based on the selected shape."""
         if shape == "square":
@@ -199,34 +195,27 @@ class ImageProcessor:
         Returns:
             np.array: The processed image after applying the selected operation.
         """
-        kernel = self.get_kernel_bin(kernel_shape)  # Get the selected kernel
+        kernel = self.get_kernel_bin(kernel_shape)
         if image is None:
             image = self.image
 
         kernel_size = kernel.shape[0]
         pad = kernel_size // 2
 
-        # Pad the image to handle edges
         image_padded = np.pad(image, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
-        
-        # Initialize the output image: dilation (white pixels = 255) or erosion (black pixels = 0)
         if operation == "dilation":
-            output = np.ones_like(image, dtype=np.uint8) * 255  # White background for dilation
+            output = np.ones_like(image, dtype=np.uint8) * 255 
         elif operation == "erosion":
-            output = np.ones_like(image, dtype=np.uint8) * 255  # White background for erosion
+            output = np.ones_like(image, dtype=np.uint8) * 255
         else:
             raise ValueError(f"Invalid operation: {operation}. Use 'dilation' or 'erosion'.")
-        #pad the output image
         output = np.pad(output, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
 
         for i in range(image.shape[0]):
             for j in range(image.shape[1]):
-                # Extract the region of the image that corresponds to the kernel's size
                 region = image_padded[i:i + kernel_size, j:j + kernel_size]
 
                 if operation == "dilation":
-                    # For dilation: if the center of the kernel aligns with a black pixel, set the area correspoding to kernel black
-                    #print(region)
                     if region[1, 1, 1] == 0:
                         output[i, j] = 0
                         for k in range(kernel_size):
@@ -235,11 +224,9 @@ class ImageProcessor:
                                     output[i + k, j + l] = 0
 
                 elif operation == "erosion":
-                    # For erosion: If any black pixel in the kernel doesn't align, set the center to white
                     erosion_condition = True
                     for k in range(kernel_size):
                         for l in range(kernel_size):
-                            #use 'any' for the if condition
                             if kernel[k, l] == 0 and region[1, k, l].any() != 0:  
                                 erosion_condition = False
                                 break
@@ -247,11 +234,11 @@ class ImageProcessor:
                             break
 
                     if not erosion_condition:
-                        output[i, j] = 255  # Set the center pixel to white if erosion condition fails
+                        output[i, j] = 255
                     else:
-                        output[i, j] = 0  # Otherwise, set to black
+                        output[i, j] = 0
 
-        return output[pad:-pad, pad:-pad]  # Remove padding before returning the output image
+        return output[pad:-pad, pad:-pad]
 
     def apply_custom_filter(self, kernel):
         """
@@ -259,27 +246,21 @@ class ImageProcessor:
         """
         return self.convolve(kernel)
 
-
     def rotate(self, angle):
         """
         Rotate the image by the given angle 
         """
-        # Convert angle to radians
         theta = np.radians(angle)
         
-        # Get image dimensions
         h, w, c = self.image.shape  
 
-        # Compute the center of the image
         center_x, center_y = w // 2, h // 2
 
-        # Rotation matrix for counterclockwise rotation
         rotation_matrix = np.array([
             [np.cos(theta), -np.sin(theta)],
             [np.sin(theta),  np.cos(theta)]
         ])
 
-        # Determine the new image size by checking corner transformations
         corners = np.array([
             [-center_x, -center_y],
             [w - center_x, -center_y],
@@ -287,29 +268,21 @@ class ImageProcessor:
             [w - center_x, h - center_y]
         ])
 
-        # Rotate corners to find the new bounding box
         new_corners = np.dot(corners, rotation_matrix.T)
         min_x, min_y = new_corners.min(axis=0)
         max_x, max_y = new_corners.max(axis=0)
 
-        # Compute new width and height
         new_w = int(np.ceil(max_x - min_x))
         new_h = int(np.ceil(max_y - min_y))
 
-        # Create an empty output image
         rotated_image = np.zeros((new_h, new_w, c), dtype=self.image.dtype)
 
-        # Compute new center
         new_center_x, new_center_y = new_w // 2, new_h // 2
 
-        # Iterate over each pixel in the new image
         for i in range(new_h):
             for j in range(new_w):
-                # Map back to original image coordinates
                 x, y = np.dot(rotation_matrix.T, np.array([j - new_center_x, i - new_center_y]))
                 x, y = int(round(x + center_x)), int(round(y + center_y))
-
-                # Check if coordinates are within the original image bounds
                 if 0 <= x < w and 0 <= y < h:
                     rotated_image[i, j] = self.image[y, x]
 
@@ -320,22 +293,18 @@ class ImageProcessor:
         Flip the image in the specified direction. 
         direction: 'horizontal' or 'vertical
         '"""
-        # Get the image dimensions
         height, width, channels = self.image.shape
         
         if direction == 'horizontal':
-            # Flip the image horizontally by reversing the columns
             flipped_image = self.image.copy()
             for row in range(height):
-                flipped_image[row] = self.image[row, ::-1]  # Reverse each row
+                flipped_image[row] = self.image[row, ::-1] 
 
         elif direction == 'vertical':
-            # Flip the image vertically by reversing the rows
             flipped_image = self.image.copy()
-            flipped_image = flipped_image[::-1, :, :]  # Reverse rows
+            flipped_image = flipped_image[::-1, :, :]
         else:
             raise ValueError("Direction must be 'horizontal' or 'vertical'")
-
         return flipped_image
         
 
