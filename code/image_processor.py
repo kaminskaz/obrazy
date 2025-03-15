@@ -257,7 +257,6 @@ class ImageProcessor:
         """
         Apply a custom filter to the image using the provided kernel.
         """
-        print(kernel)
         return self.convolve(kernel)
 
 
