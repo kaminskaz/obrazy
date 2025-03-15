@@ -144,83 +144,115 @@ class ImageProcessor:
             output = self.convolve(kernel)
         return output
         
-
-    def erosion(self, image=None, kernel=None):
-        """
-        Erosion of an image
-        """
-        if kernel is None:
-            kernel = np.ones((3, 3), dtype=np.uint8)  
-        
-        if image is None:
-            image = self.image
-
-        image = self.binarization(image) 
-        kernel_size = kernel.shape[0]
-        pad = kernel_size // 2
-
-        image_padded = np.pad(image, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
-        output = np.zeros_like(image, dtype=np.uint8)
-
-        for i in range(image.shape[0]):
-            for j in range(image.shape[1]):
-                region = image_padded[i:i + kernel_size, j:j + kernel_size]
-
-                if (region == kernel).all():
-                    output[i, j] = 1
-
-        return output
-
-    
-    def dilation(self, image=None, kernel=None):
-        """
-        Dilation of an image
-        """
-        if kernel is None:
-            kernel = np.ones((3, 3), dtype=np.uint8)  
-        
-        if image is None:
-            image = self.image
-
-        image = self.binarization(image)  
-        kernel_size = kernel.shape[0]
-        pad = kernel_size // 2
-
-        image_padded = np.pad(image, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
-        output = np.zeros_like(image, dtype=np.uint8)
-
-        for i in range(image.shape[0]):
-            for j in range(image.shape[1]):
-                region = image_padded[i:i + kernel_size, j:j + kernel_size]
-
-                if (region * kernel).any():
-                    output[i, j] = 1
-
-        return output
-
     def opening(self, kernel=None):
         """
         Opening of an image
         """
         if kernel is None:
-            kernel = np.ones((3, 3), dtype=np.uint8)   
+            kernel = self.get_kernel_bin("square")  
 
-        eroded_img = self.erosion(self.image, kernel) 
+        eroded_img = self.convolute_binary(self.image, kernel_shape="square", operation="erosion")
 
-        return self.dilation(eroded_img, kernel)  
+        return self.convolute_binary(eroded_img, kernel_shape="square", operation="dilation") 
 
     def closing(self, kernel=None):  
         """
         Closing of an image
         """
         if kernel is None:
-            kernel = np.ones((3, 3), dtype=np.uint8)   
+            kernel = self.get_kernel_bin("square") 
 
-        dilated_img = self.dilation(self.image, kernel) 
+        dilated_img = self.convolute_binary(self.image, kernel_shape="square", operation="dilation")
 
-        return self.erosion(dilated_img, kernel)    
-
+        return self.convolute_binary(dilated_img, kernel_shape="square", operation="erosion")
     
+    
+    def get_kernel_bin(self, shape="square"):
+        """Generate a kernel based on the selected shape."""
+        if shape == "square":
+            return np.zeros((3, 3), dtype=np.uint8)
+        elif shape == "cross":
+            kernel = np.ones((3, 3), dtype=np.uint8)
+            kernel[1, :] = 0
+            kernel[:, 1] = 0
+            return kernel
+        elif shape == "vertical_line":
+            return np.array([[0, 1, 0],
+                             [0, 1, 0],
+                             [0, 1, 0]])
+        elif shape == "horizontal_line":
+            return np.array([[0, 0, 0],
+                             [1, 1, 1],
+                             [0, 0, 0]])
+        else:
+            raise ValueError(f"Unknown kernel shape: {shape}")
+
+    def convolute_binary(self, image=None, kernel_shape="square", operation="dilation"):
+        """
+        Perform binary image convolution for either dilation or erosion depending on the operation parameter.
+        
+        Parameters:
+            image (np.array): The binary image to process (default is the class image).
+            kernel_shape (str): The shape of the kernel to use (e.g., "square", "cross", etc.).
+            operation (str): The operation to perform: 'dilation' for dilation, 'erosion' for erosion.
+            
+        Returns:
+            np.array: The processed image after applying the selected operation.
+        """
+        kernel = self.get_kernel_bin(kernel_shape)  # Get the selected kernel
+        if image is None:
+            image = self.image
+
+        kernel_size = kernel.shape[0]
+        pad = kernel_size // 2
+
+        # Pad the image to handle edges
+        image_padded = np.pad(image, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
+        
+        # Initialize the output image: dilation (white pixels = 255) or erosion (black pixels = 0)
+        if operation == "dilation":
+            output = np.ones_like(image, dtype=np.uint8) * 255  # White background for dilation
+        elif operation == "erosion":
+            output = np.ones_like(image, dtype=np.uint8) * 255  # White background for erosion
+        else:
+            raise ValueError(f"Invalid operation: {operation}. Use 'dilation' or 'erosion'.")
+        #pad the output image
+        output = np.pad(output, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
+
+        for i in range(image.shape[0]):
+            for j in range(image.shape[1]):
+                # Extract the region of the image that corresponds to the kernel's size
+                region = image_padded[i:i + kernel_size, j:j + kernel_size]
+
+                if operation == "dilation":
+                    # For dilation: if the center of the kernel aligns with a black pixel, set the area correspoding to kernel black
+                    #print(region)
+                    if region[1, 1, 1] == 0:
+                        output[i, j] = 0
+                        for k in range(kernel_size):
+                            for l in range(kernel_size):
+                                if kernel[k, l] == 0:
+                                    output[i + k, j + l] = 0
+
+                elif operation == "erosion":
+                    # For erosion: If any black pixel in the kernel doesn't align, set the center to white
+                    erosion_condition = True
+                    for k in range(kernel_size):
+                        for l in range(kernel_size):
+                            #use 'any' for the if condition
+                            if kernel[k, l] == 0 and region[1, k, l].any() != 0:  
+                                erosion_condition = False
+                                break
+                        if not erosion_condition:
+                            break
+
+                    if not erosion_condition:
+                        output[i, j] = 255  # Set the center pixel to white if erosion condition fails
+                    else:
+                        output[i, j] = 0  # Otherwise, set to black
+
+        return output[pad:-pad, pad:-pad]  # Remove padding before returning the output image
+
     def apply_custom_filter(self, kernel):
         """
         Apply a custom filter to the image using the provided kernel.

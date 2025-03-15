@@ -33,6 +33,7 @@ class ImageProcessorGUI(QWidget):
         self.image_path = None  
         self.image_processor = None  
         self.processed_image = None  
+        self.binary_kernel = None
 
         self.big_layout = QHBoxLayout()
         # Menu bar
@@ -177,6 +178,14 @@ class ImageProcessorGUI(QWidget):
 
         # Morphological Operations
         self.morphological_operations_layout = QHBoxLayout()
+        #add dropdown to choose kernel shape
+        self.kernel_shape_label = QLabel("Select Kernel Shape:")
+        self.kernel_shape_combo = QComboBox()
+        self.kernel_shape_combo.addItems(["square", "cross", "vertical_line", "horizontal_line"])
+        self.morphological_operations_layout.addWidget(self.kernel_shape_label)
+        self.morphological_operations_layout.addWidget(self.kernel_shape_combo)
+        #when chosen shape, update self.binary_kernel
+        self.kernel_shape_combo.currentIndexChanged.connect(self.update_kernel_shape)
 
         self.erosion_button = QPushButton("Errosion")
         self.erosion_button.clicked.connect(self.erosion)
@@ -292,6 +301,7 @@ class ImageProcessorGUI(QWidget):
         self.green_checkbox.setChecked(True)
         self.blue_checkbox.setChecked(True)
         self.mean_checkbox.setChecked(False)
+
         # Connect the checkboxes' stateChanged signal to the update_histogram method
         self.red_checkbox.stateChanged.connect(self.update_histogram)
         self.green_checkbox.stateChanged.connect(self.update_histogram)
@@ -453,22 +463,28 @@ class ImageProcessorGUI(QWidget):
 
     def update_histogram(self):
         if self.image_processor:
+            # Determine the image to work with: processed or original
             if self.processed_image is not None:
                 processed_image = self.processed_image
-                r = processed_image[:, :, 0].flatten()
-                g = processed_image[:, :, 1].flatten()
-                b = processed_image[:, :, 2].flatten()
             else:
                 processed_image = self.image_processor.image
-                r = processed_image[:, :, 0].flatten()
-                g = processed_image[:, :, 1].flatten()
-                b = processed_image[:, :, 2].flatten()
+
+            # Check if the image is a color image (3D) or grayscale (2D)
+            if len(processed_image.shape) == 3:  # Color image (height x width x channels)
+                r = processed_image[:, :, 0].flatten()  # Red channel
+                g = processed_image[:, :, 1].flatten()  # Green channel
+                b = processed_image[:, :, 2].flatten()  # Blue channel
+            else:  # Grayscale image (height x width)
+                r = g = b = processed_image.flatten()  # Use the same data for all channels
+
+            # Combine the channels into one array for the "Mean" histogram
             combined = np.concatenate((r, g, b), axis=0)
             mean = np.mean(combined)
 
+            # Clear the previous histogram plot
             self.canvas_histogram.axes.cla()
 
-            # Plot selected color channels based on checkbox state
+            # Plot selected color channels based on checkbox states
             if self.red_checkbox.isChecked():
                 self.canvas_histogram.axes.hist(r, bins=256, range=(0,255), color='r', alpha=0.4, label='Red')
             if self.green_checkbox.isChecked():
@@ -478,15 +494,21 @@ class ImageProcessorGUI(QWidget):
             if self.mean_checkbox.isChecked():
                 self.canvas_histogram.axes.hist(combined, bins=256, range=(0,255), color='gray', alpha=0.4, label='Mean')
 
+            # Customize the histogram appearance
             self.canvas_histogram.axes.tick_params(axis='both', labelsize=6)
-            self.canvas_histogram.axes.set_title("RGB histogram", fontsize=8)
-            self.canvas_histogram.axes.set_xlabel("Pixel value", fontsize=7)
-            self.canvas_histogram.axes.set_ylabel("Number of pixels", fontsize=7)
+            self.canvas_histogram.axes.set_title("RGB Histogram", fontsize=8)
+            self.canvas_histogram.axes.set_xlabel("Pixel Value", fontsize=7)
+            self.canvas_histogram.axes.set_ylabel("Number of Pixels", fontsize=7)
             self.canvas_histogram.axes.set_xlim(0, 255)
-            self.canvas_histogram.axes.spines['left'].set_visible(True) 
+
+            # Show the histogram axis spines
+            self.canvas_histogram.axes.spines['left'].set_visible(True)
             self.canvas_histogram.axes.spines['bottom'].set_visible(True)
-            self.canvas_histogram.figure.tight_layout()  
+
+            # Make layout adjustments and update the plot
+            self.canvas_histogram.figure.tight_layout()
             self.canvas_histogram.draw()
+
 
 
     def apply_brightness(self):
@@ -551,25 +573,25 @@ class ImageProcessorGUI(QWidget):
     def erosion(self):
         """Apply erosion to the image."""
         if self.image_processor:
-            self.processed_image = self.image_processor.erosion()
+            self.processed_image = self.image_processor.convolute_binary(self.image_processor.image, self.binary_kernel,'erosion')
             self.display_image(self.processed_image, self.processed_label)
     
     def dilation(self):
         """Apply dilation to the image."""
         if self.image_processor:
-            self.processed_image = self.image_processor.dilation()
+            self.processed_image = self.image_processor.convolute_binary(self.image_processor.image, self.binary_kernel,'dilation')
             self.display_image(self.processed_image, self.processed_label)
 
     def opening(self):
         """Apply opening to the image."""
         if self.image_processor:
-            self.processed_image = self.image_processor.opening()
+            self.processed_image = self.image_processor.opening(self.binary_kernel)
             self.display_image(self.processed_image, self.processed_label)
 
     def closing(self):
         """Apply closing to the image."""     
         if self.image_processor:
-            self.processed_image = self.image_processor.closing()
+            self.processed_image = self.image_processor.closing(self.binary_kernel)
             self.display_image(self.processed_image, self.processed_label)
 
 
@@ -590,6 +612,9 @@ class ImageProcessorGUI(QWidget):
                 #input zeros into weights where values are missing
                 weight_input.setText("0")
                 self.kernel_input_grid.addWidget(weight_input, i, j)
+
+    def update_kernel_shape(self):
+        self.binary_kernel = self.kernel_shape_combo.currentText()
 
     def apply_custom_filter(self):
         if self.image_processor is None:
