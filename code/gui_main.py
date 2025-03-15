@@ -326,7 +326,6 @@ class ImageProcessorGUI(QWidget):
         self.custom_filter_layout.addLayout(checkbox_layout)
         self.custom_filter_layout.addLayout(self.histogram_layout)
         
-
         # Projection layout
         self.projection_layout = QVBoxLayout()
         self.projection_label = QLabel("Projection")
@@ -405,19 +404,18 @@ class ImageProcessorGUI(QWidget):
         edit_menu = menu_bar.addMenu("Edit")
 
         self.undo_action = QAction("Undo", self)
-        self.undo_action.setShortcut("Ctrl+Z")  # Add keyboard shortcut
+        self.undo_action.setShortcut("Ctrl+Z") 
         self.undo_action.triggered.connect(self.undo)
-        self.undo_action.setEnabled(False)  # Initially disabled
+        self.undo_action.setEnabled(False)
         edit_menu.addAction(self.undo_action)
 
         self.redo_action = QAction("Redo", self)
-        self.redo_action.setShortcut("Ctrl+Y")  # Add keyboard shortcut
+        self.redo_action.setShortcut("Ctrl+Y") 
         self.redo_action.triggered.connect(self.redo)
-        self.redo_action.setEnabled(False)  # Initially disabled
+        self.redo_action.setEnabled(False)
         edit_menu.addAction(self.redo_action)
 
         self.big_layout.setMenuBar(menu_bar)
-
 
     def load_image(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Image", "", "Images (*.jpg *.jpeg *.png *.bmp *.tif)")
@@ -426,7 +424,7 @@ class ImageProcessorGUI(QWidget):
             img = cv2.imread(self.image_path)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            self.original_image = img.copy()  # Store original image
+            self.original_image = img.copy() 
             self.image_processor = ImageProcessor(img)
 
             self.display_image(self.original_image, self.original_label)
@@ -434,8 +432,7 @@ class ImageProcessorGUI(QWidget):
 
 
             self.brightness_slider.setValue(0)
-            self.contrast_slider.setValue(0)  # Reset contrast slider to default
-
+            self.contrast_slider.setValue(0) 
 
     def display_image(self, image, label):
         """
@@ -445,11 +442,11 @@ class ImageProcessorGUI(QWidget):
             return
 
         height, width = image.shape[:2]
-        if len(image.shape) == 2:  # Grayscale image (2D)
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)  # Convert grayscale to RGB
+        if len(image.shape) == 2:  
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB) 
             height, width = image.shape[:2]
 
-        bytes_per_line = width * 3  # Assuming 3 channels (RGB)
+        bytes_per_line = width * 3 
         image_data = image.tobytes()
 
         q_img = QImage(image_data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
@@ -463,28 +460,23 @@ class ImageProcessorGUI(QWidget):
 
     def update_histogram(self):
         if self.image_processor:
-            # Determine the image to work with: processed or original
             if self.processed_image is not None:
                 processed_image = self.processed_image
             else:
                 processed_image = self.image_processor.image
 
-            # Check if the image is a color image (3D) or grayscale (2D)
-            if len(processed_image.shape) == 3:  # Color image (height x width x channels)
-                r = processed_image[:, :, 0].flatten()  # Red channel
-                g = processed_image[:, :, 1].flatten()  # Green channel
-                b = processed_image[:, :, 2].flatten()  # Blue channel
-            else:  # Grayscale image (height x width)
-                r = g = b = processed_image.flatten()  # Use the same data for all channels
+            if len(processed_image.shape) == 3:  
+                r = processed_image[:, :, 0].flatten() 
+                g = processed_image[:, :, 1].flatten() 
+                b = processed_image[:, :, 2].flatten()
+            else: 
+                r = g = b = processed_image.flatten()
 
-            # Combine the channels into one array for the "Mean" histogram
             combined = np.concatenate((r, g, b), axis=0)
             mean = np.mean(combined)
 
-            # Clear the previous histogram plot
             self.canvas_histogram.axes.cla()
 
-            # Plot selected color channels based on checkbox states
             if self.red_checkbox.isChecked():
                 self.canvas_histogram.axes.hist(r, bins=256, range=(0,255), color='r', alpha=0.4, label='Red')
             if self.green_checkbox.isChecked():
@@ -501,15 +493,11 @@ class ImageProcessorGUI(QWidget):
             self.canvas_histogram.axes.set_ylabel("Number of Pixels", fontsize=7)
             self.canvas_histogram.axes.set_xlim(0, 255)
 
-            # Show the histogram axis spines
             self.canvas_histogram.axes.spines['left'].set_visible(True)
             self.canvas_histogram.axes.spines['bottom'].set_visible(True)
 
-            # Make layout adjustments and update the plot
             self.canvas_histogram.figure.tight_layout()
             self.canvas_histogram.draw()
-
-
 
     def apply_brightness(self):
         """Change brightness of the image based on slider value."""
@@ -594,10 +582,8 @@ class ImageProcessorGUI(QWidget):
             self.processed_image = self.image_processor.closing(self.binary_kernel)
             self.display_image(self.processed_image, self.processed_label)
 
-
     def update_kernel_input_grid(self):
         """Update the grid layout based on the selected kernel size."""
-        # Clear existing input fields
         for i in range(self.kernel_input_grid.count()):
             widget = self.kernel_input_grid.itemAt(i).widget()
             if widget is not None:
@@ -606,10 +592,8 @@ class ImageProcessorGUI(QWidget):
         kernel_size = int(self.kernel_size_combo.currentText())
         for i in range(kernel_size):
             for j in range(kernel_size):
-                # Create QLineEdit for each kernel cell
                 weight_input = QLineEdit(self)
-                weight_input.setPlaceholderText("0")  # Default placeholder
-                #input zeros into weights where values are missing
+                weight_input.setPlaceholderText("0") 
                 weight_input.setText("0")
                 self.kernel_input_grid.addWidget(weight_input, i, j)
 
@@ -623,7 +607,6 @@ class ImageProcessorGUI(QWidget):
         kernel_size = int(self.kernel_size_combo.currentText())
         weights = []
 
-        # Retrieve weights from the grid
         for i in range(kernel_size):
             for j in range(kernel_size):
                 weight_input = self.kernel_input_grid.itemAt(i * kernel_size + j).widget()
@@ -638,10 +621,7 @@ class ImageProcessorGUI(QWidget):
             QMessageBox.warning(self, "Input Error", "Number of weights must match the kernel size.")
             return
 
-        # Convert the list of weights into a numpy array
         weights_array = np.array(weights).reshape((kernel_size, kernel_size))
-
-        # Apply custom filter
         self.processed_image = self.image_processor.apply_custom_filter(weights_array)
         self.display_image(self.processed_image, self.processed_label)
 
@@ -649,73 +629,66 @@ class ImageProcessorGUI(QWidget):
         """
         Apply rotation to the image based on user-selected angle.
         """
-        angle = self.angle_input.value()  # Get angle from input
+        angle = self.angle_input.value()  
         if self.image_processor is None:
             return
-        rotated_image = self.image_processor.rotate(angle)  # Rotate using custom function
-        self.processed_image = rotated_image  # Store rotated image as processed image
-
-        # Display the rotated image in the processed label
+        rotated_image = self.image_processor.rotate(angle)
+        self.processed_image = rotated_image
         self.display_image(self.processed_image, self.processed_label)
 
     def apply_flip_horizontal(self):
         """Flip the image horizontally and display it."""
         if self.image_processor:
-            flipped_image = self.image_processor.flip('horizontal')  # Flip horizontally
-            self.processed_image = flipped_image  # Store the flipped image as the processed image
-
-            # Display the flipped image in the processed label
+            flipped_image = self.image_processor.flip('horizontal')
+            self.processed_image = flipped_image
             self.display_image(self.processed_image, self.processed_label)
 
     def apply_flip_vertical(self):
         """Flip the image vertically and display it."""
         if self.image_processor:
-            flipped_image = self.image_processor.flip('vertical')  # Flip vertically
-            self.processed_image = flipped_image  # Store the flipped image as the processed image
-
-            # Display the flipped image in the processed label
+            flipped_image = self.image_processor.flip('vertical')
+            self.processed_image = flipped_image
             self.display_image(self.processed_image, self.processed_label)
 
     
     def apply_changes(self):
         """Apply the current modifications to the image, allowing further edits."""
         if self.image_processor and self.processed_image is not None:
-            self.previous_image = self.image_processor.image.copy()  # Store previous image
+            self.previous_image = self.image_processor.image.copy()
             self.image_processor.image = self.processed_image.copy()
             self.display_image(self.image_processor.image, self.original_label)
 
-            self.undo_action.setEnabled(True)  # Enable undo
-            self.next_image = None  # Reset redo when applying new change
-            self.redo_action.setEnabled(False)  # Disable redo
+            self.undo_action.setEnabled(True)
+            self.next_image = None 
+            self.redo_action.setEnabled(False)
 
             self.reset_slider_values()
     
     def undo(self):
         """Revert to the previous image."""
         if self.previous_image is not None:
-            self.next_image = self.image_processor.image.copy()  # Store current as next image
+            self.next_image = self.image_processor.image.copy()
             self.image_processor.image = self.previous_image.copy()
             self.processed_image = self.previous_image.copy()
 
             self.display_image(self.image_processor.image, self.processed_label)
             self.display_image(self.image_processor.image, self.original_label)
 
-            self.redo_action.setEnabled(True)  # Enable redo
-            self.undo_action.setEnabled(False)  # Only one undo step
+            self.redo_action.setEnabled(True)
+            self.undo_action.setEnabled(False)
 
     def redo(self):
         """Reapply the undone change."""
         if self.next_image is not None:
-            self.previous_image = self.image_processor.image.copy()  # Store current as previous
+            self.previous_image = self.image_processor.image.copy()
             self.image_processor.image = self.next_image.copy()
             self.processed_image = self.next_image.copy()
 
             self.display_image(self.image_processor.image, self.processed_label)
             self.display_image(self.image_processor.image, self.original_label)
 
-            self.undo_action.setEnabled(True)  # Enable undo
-            self.redo_action.setEnabled(False)  # Only one redo step
-
+            self.undo_action.setEnabled(True)  
+            self.redo_action.setEnabled(False)
 
     def reset_image(self):
         """Reset the image to the original version."""
@@ -746,7 +719,6 @@ class ImageProcessorGUI(QWidget):
             
             cv2.imwrite(file_path, cv2.cvtColor(self.processed_image, cv2.COLOR_RGB2BGR))
 
-
     def update_projection(self):
         if self.image_processor:
             if self.processed_image is not None:
@@ -762,7 +734,6 @@ class ImageProcessorGUI(QWidget):
             selected_projection = self.projection_type.currentText()
 
             self.canvas_projection.axes.cla()
-
 
             if selected_projection == "Horizontal":
                 self.canvas_projection.axes.hist(np.arange(len(projection_h)), alpha=0.4, bins=len(projection_h),  weights=projection_h, color='b', label='Horizontal')
@@ -782,13 +753,11 @@ class ImageProcessorGUI(QWidget):
 
             self.canvas_projection.draw()
 
-        
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     welcome_dialog = WelcomeDialog()
-    if welcome_dialog.exec():  # If user clicks "Get Started", open main GUI
+    if welcome_dialog.exec(): 
         window = ImageProcessorGUI()
         window.show()
         sys.exit(app.exec())
